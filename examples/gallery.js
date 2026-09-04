@@ -142,14 +142,18 @@
       ]),
       scenarioRow(profile.username, data),
       el('div', { class: 'btn-row mt1' }, [
+        // Both carry demo=1. Navigating to another page loses this one's
+        // <body data-profile-dir>, and without the flag the destination would read
+        // profile-data/ — where these fixtures deliberately do not live — and show
+        // an empty form instead of the person you clicked.
         el('a', {
           class: 'btn btn-sm btn-ghost',
-          href: Store.rootRelative('card-builder/?u=' + encodeURIComponent(profile.username)),
+          href: Store.rootRelative('card-builder/?demo=1&u=' + encodeURIComponent(profile.username)),
           text: 'Design a card for this person'
         }),
         el('a', {
           class: 'btn btn-sm btn-ghost',
-          href: Store.rootRelative('print/?u=' + encodeURIComponent(profile.username)),
+          href: Store.rootRelative('print/?demo=1&u=' + encodeURIComponent(profile.username)),
           text: 'Print sheet'
         })
       ])

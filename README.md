@@ -63,7 +63,7 @@ These run on the deployed copy of this repository, using the fixture profiles in
 | [Card builder](https://clickalex.github.io/GrinCard/card-builder/) | Design a card, download print-ready files |
 | [Dashboard](https://clickalex.github.io/GrinCard/dashboard/) | Edit links, mint temporary links, approve followers |
 | [Template gallery](https://clickalex.github.io/GrinCard/templates/) | Every template, both sides, live QR stats |
-| [Print sheet](https://clickalex.github.io/GrinCard/print/?u=rahul123) | True-to-size 89 × 51 mm, ready for the printer |
+| [Print sheet](https://clickalex.github.io/GrinCard/print/?u=rahul123&demo=1) | True-to-size 89 × 51 mm, ready for the printer |
 | [QR generator](https://clickalex.github.io/GrinCard/qr-generator/) | One code, or an A4 sheet of them for stickers and table tents |
 
 Every one of those pages is in this repository and works offline once cloned.

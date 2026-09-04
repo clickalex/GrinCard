@@ -333,14 +333,28 @@ Also supported in the URL:
 | `?u=rahul123` | Which profile to show |
 | `?t=temp_abc123` | A temporary-access token |
 | `?viewer=user_priya` | Simulate being an approved follower (V1 demo only; V2 uses a session) |
-| `?demo=1` | Show the tier switcher, and make the URL safe to publish |
+| `?demo=1` | Read the shipped fixtures instead of your own profiles, and show the tier switcher |
 
 The first three combine, and precedence is follower → token → public.
 
-`?demo=1` is only ever set on fixture URLs, where every link is fake and public. On a real
-profile the switcher never renders: publishing `/profile/?viewer=user_priya` would be publishing
-a way to see your followers-only links, and this project's whole premise is that a URL you hand
-out is not a URL you can take back.
+`?demo=1` does two things that have to agree. It repoints the data directory at `examples/`
+(`Store.dataDir()`, unless the page sets `<body data-profile-dir>` itself), and it lets
+`profile/boot.js` render the four-visitor switcher plus the "this is not real access control"
+note. Splitting those would mean a switcher offering scenarios for people the page cannot find —
+which is exactly what happened when the fixtures moved out of `profile-data/`: the README's demo
+URLs and every scenario link in the examples gallery rendered "No profile here".
+
+**So any link that names a fixture must carry the flag.** Navigating to another page loses the
+current page's `data-profile-dir`, and the destination has no way to know it was handed a fixture
+username. `tests/dom.test.js` sweeps the whole repository for links to a name in
+`examples/index.json` that omit `demo=1`.
+
+The flag is only ever set on fixture URLs, where every link is fake and public. Without it a
+username that is not in `profile-data/` shows the empty state rather than falling back to the
+fixtures — rendering a stranger's example profile on somebody's own domain would be worse than an
+empty page. On a real profile the switcher never renders: publishing
+`/profile/?viewer=user_priya` would be publishing a way to see your followers-only links, and this
+project's whole premise is that a URL you hand out is not a URL you can take back.
 
 ### Moving hosts, and the one override
 

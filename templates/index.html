@@ -45,7 +45,10 @@
     </div>
     <div class="btn-row">
       <a class="btn" href="../card-builder/">Build yours</a>
-      <a class="btn btn-ghost" href="../print/?u=rahul123">Print sheet</a>
+      <!-- demo=1 travels with the fixture username: the print sheet has no
+           data-profile-dir of its own, so without the flag it reads profile-data/,
+           where rahul123 deliberately does not live. -->
+      <a class="btn btn-ghost" href="../print/?demo=1&u=rahul123">Print sheet</a>
     </div>
   </div>
 

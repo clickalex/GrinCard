@@ -25,6 +25,7 @@ const requestInterceptor = jsdomLib && jsdomLib.requestInterceptor;
 const NO_JSDOM = jsdomLib ? false : ORACLE.INSTALL_HINT;
 
 const ROOT = path.join(__dirname, '..');
+const { linkableFiles } = require('../tools/check-links.js');
 const ORIGIN = 'http://localhost:8080';
 
 function repoFile(rel, prefix) {
@@ -1157,6 +1158,80 @@ test('the profile page publishes a canonical URL for the person it is showing', 
   assert.equal(canonical.getAttribute('href'), ORIGIN + '/c/rahul123/',
     'it must be the printed URL, not the ?u= deep link the visitor arrived on');
   assert.equal(doc.title, 'Rahul Kumar — QR Link Card');
+});
+
+test('?demo=1 selects the fixture data, so a demo link is not an empty page', { skip: NO_JSDOM }, async () => {
+  // The fixtures live in examples/, not profile-data/ — they moved there so a fork ships
+  // one obvious starter profile of its own. But a link like /profile/?u=rahul123&demo=1
+  // navigates to a page with no data-profile-dir attribute of its own, so the flag has to
+  // carry the meaning too. Without it, the README's five advertised demo URLs and every
+  // scenario link in the examples gallery rendered "No profile here".
+  const demo = await loadPage('profile/index.html', { search: '?u=rahul123&demo=1', settleMs: 700 });
+  assert.deepEqual(demo.errors, [], demo.errors.join('\n'));
+  const text = demo.doc.body.textContent;
+  assert.ok(/Rahul/.test(text), 'the fixture must render from examples/ via ?demo=1 alone');
+  assert.ok(!/No profile here/i.test(text), 'and must not fall through to the empty state');
+  // Ends with examples/, whatever depth this page is running at.
+  assert.match(demo.win.Store.dataDir(), /(^|\/)examples\/$/,
+    '?demo=1 repoints the data directory: ' + demo.win.Store.dataDir());
+
+  // The registry has to follow, or the temporary-link scenarios silently degrade to the
+  // public tier — which looks like a working page and is the wrong answer.
+  const tokened = await loadPage('profile/index.html',
+    { search: '?u=rahul123&t=temp_demo_live&demo=1', settleMs: 700 });
+  assert.deepEqual(tokened.errors, [], tokened.errors.join('\n'));
+  assert.ok(/Pricing|WhatsApp/i.test(tokened.doc.body.textContent),
+    'the token scenario must unlock a private link from examples/tokens.json');
+
+  // Without the flag, a real deployment must NOT fall back to the fixtures. Rendering a
+  // stranger's example profile on somebody's own domain would be worse than an empty page.
+  const plain = await loadPage('profile/index.html', { search: '?u=rahul123', settleMs: 700 });
+  assert.match(plain.win.Store.dataDir(), /(^|\/)profile-data\/$/,
+    'no flag, no fixture directory: ' + plain.win.Store.dataDir());
+  assert.ok(/No profile here|Nothing here/i.test(plain.doc.body.textContent),
+    'a username that is not in profile-data/ shows the empty state rather than a fixture');
+
+  // An explicit attribute still wins: that is how examples/index.html and the tests
+  // repoint a page, and a URL parameter must not be able to override it.
+  const explicit = await loadPage('profile/index.html',
+    { search: '?u=rahul123&demo=1', settleMs: 700, profileDir: '../examples/' });
+  assert.match(explicit.win.Store.dataDir(), /(^|\/)examples\/$/,
+    'data-profile-dir beats ?demo=1: ' + explicit.win.Store.dataDir());
+});
+
+test('every link to a fixture profile carries the demo flag', () => {
+  // The general form of the bug above, checked statically over the whole repository:
+  // a link that names a fixture person but does not say "demo" lands on a page that
+  // reads profile-data/, where that person does not exist.
+  const examples = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8'));
+  const fixtures = new Set(examples.profiles);
+  assert.ok(fixtures.size >= 2, 'expected the fixture set, got ' + [...fixtures]);
+
+  const offenders = [];
+  const files = linkableFiles(ROOT);
+  for (const file of files) {
+    if (/^tests[/\\]/.test(path.relative(ROOT, file))) continue;   // tests repoint via profileDir
+    const text = fs.readFileSync(file, 'utf8');
+    for (const m of text.matchAll(/(?:href|src)\s*=\s*["']([^"']*)["']/g)) {
+      const target = m[1];
+      if (!/[?&]u=/.test(target)) continue;
+      const user = decodeURIComponent((/[?&]u=([^&#]*)/.exec(target) || [, ''])[1]);
+      if (!fixtures.has(user)) continue;
+      if (!/[?&]demo=(1|true)/.test(target)) {
+        offenders.push(path.relative(ROOT, file) + ' -> ' + target);
+      }
+    }
+    // The gallery builds these URLs in JS rather than in markup.
+    for (const m of text.matchAll(/rootRelative\(\s*'(?:[^']*)\?([^']*)'/g)) {
+      const built = m[1];
+      if (!/(?:card-builder|print)\//.test(m[0])) continue;
+      if (!/demo=/.test(built) && !/demo/.test(m[0])) {
+        offenders.push(path.relative(ROOT, file) + ' builds a fixture link without demo: ' + m[0].slice(0, 70));
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], offenders.join('\n'));
 });
 
 test('the tier switcher is a demo affordance and stays off a real card', { skip: NO_JSDOM }, async () => {

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Example profile — QR Link Card</title>
+<!-- The spec (§11) names this file demo-profile.html; the real page is
+     profile.html, which takes ?u=username. This keeps both paths working. -->
+<script>
+  var params = new URLSearchParams(location.search);
+  var target = 'profile.html';
+  if (!params.has('u')) params.set('u', 'rahul123');
+  location.replace(target + '?' + params.toString());
+</script>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main class="wrap" style="padding-top:40px">
+    <p>Loading the example profile… <a href="profile.html?u=rahul123">Continue</a></p>
+  </main>
+</body>
+</html>

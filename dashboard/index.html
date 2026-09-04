@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — QR Link Card</title>
+<meta name="description" content="Edit your profile, manage public and private links, mint temporary links, approve followers, and download a print-ready QR card.">
+<link rel="stylesheet" href="../demo/assets/styles.css">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body data-base-depth="1">
+
+<a class="sr-only" href="#profile-editor">Skip to the profile editor</a>
+
+<header class="topbar">
+  <a class="brand" href="../index.html" aria-label="QR Link Card home">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+      <rect width="22" height="22" rx="5" fill="#16161d"/>
+      <rect x="4" y="4" width="5" height="5" fill="#f2b134"/>
+      <rect x="13" y="4" width="5" height="5" fill="#fff"/>
+      <rect x="4" y="13" width="5" height="5" fill="#fff"/>
+      <rect x="13" y="13" width="2" height="2" fill="#fff"/>
+      <rect x="16" y="16" width="2" height="2" fill="#f2b134"/>
+    </svg>
+    QR Link Card
+  </a>
+  <nav>
+    <a href="../index.html">Overview</a>
+    <a href="../card-builder/">Builder</a>
+    <a href="./" aria-current="page">Dashboard</a>
+    <a href="../demo/profile.html">Profile</a>
+    <a href="../qr-generator/">QR tool</a>
+    <a href="../docs/ARCHITECTURE.md">Docs</a>
+  </nav>
+</header>
+
+<main class="wrap dash">
+
+  <div class="dash-head">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="muted small mb0" id="dash-subtitle">Editing…</p>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-load-demo">Load demo profile</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-reset">Reset local data</button>
+      <button type="button" class="btn" id="btn-save">Save</button>
+    </div>
+  </div>
+
+  <div id="alerts"></div>
+
+  <div class="grid grid-side">
+    <div class="stack">
+
+      <!-- 1. Profile editor -->
+      <section class="panel" id="profile-editor" aria-labelledby="h-profile">
+        <div class="panel-head">
+          <h2 id="h-profile">Profile</h2>
+          <span class="hint">This is what visitors see at your permanent URL.</span>
+        </div>
+
+        <div class="field">
+          <label for="f-username">Username</label>
+          <div class="inline-input">
+            <span class="prefix mono" id="username-prefix">/c/</span>
+            <input type="text" id="f-username" autocomplete="off" spellcheck="false"
+                   placeholder="rahul123" aria-describedby="h-username">
+          </div>
+          <p class="help" id="h-username">
+            3–32 characters: letters, numbers, dot, dash, underscore. This becomes your permanent URL —
+            it is printed on the card, so pick something you will keep.
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="f-name">Display name</label>
+          <input type="text" id="f-name" autocomplete="name" placeholder="Rahul Kumar">
+        </div>
+
+        <div class="field">
+          <label for="f-role">Designation</label>
+          <input type="text" id="f-role" placeholder="Freelance Illustrator">
+        </div>
+
+        <div class="field">
+          <label for="f-tagline">Tagline <span class="muted">(optional)</span></label>
+          <input type="text" id="f-tagline" placeholder="Brands, packaging and the occasional mural">
+        </div>
+
+        <div class="field">
+          <label for="f-photo-file">Photo</label>
+          <div class="photo-row">
+            <img id="photo-preview" alt="" width="64" height="64" hidden>
+            <div class="photo-controls">
+              <input type="file" id="f-photo-file" accept="image/*" class="file-input">
+              <input type="url" id="f-photo-url" placeholder="…or paste an image URL">
+              <div class="btn-row mt1">
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-photo-clear">Remove photo</button>
+              </div>
+              <p class="help">
+                Uploaded photos are resized to 600&nbsp;px and stored in this browser. A pasted URL works on
+                screen but may be blocked when exporting the PDF (the host must allow cross-origin reads).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Show photo on the card and page</label>
+          <span class="check">
+            <input type="checkbox" id="f-show-photo" checked>
+            <span>Include my photo</span>
+          </span>
+        </div>
+      </section>
+
+      <!-- 2. Link manager -->
+      <section class="panel" id="link-manager" aria-labelledby="h-links">
+        <div class="panel-head">
+          <h2 id="h-links">Links</h2>
+          <span class="hint" id="link-count">0 public · 0 followers-only</span>
+        </div>
+
+        <div class="notice notice-info small" id="visibility-explainer">
+          <div>
+            <strong>Public</strong> links are shown to anyone who scans the card.
+            <strong>Followers only</strong> links are hidden unless you approve someone, or you send them a
+            temporary link that unlocks that one link.
+          </div>
+        </div>
+
+        <div id="link-rows" class="rows"></div>
+
+        <div class="btn-row mt2">
+          <button type="button" class="btn" id="btn-add-link">+ Add link</button>
+        </div>
+        <p class="help" id="link-limit-help"></p>
+      </section>
+
+      <!-- 3. Card design -->
+      <section class="panel" id="card-design" aria-labelledby="h-design">
+        <div class="panel-head">
+          <h2 id="h-design">Card design</h2>
+          <span class="hint">All templates are free in the open-source core.</span>
+        </div>
+        <div id="template-picker" class="template-picker"></div>
+
+        <div class="field mt2">
+          <label for="f-profile-url">URL encoded in the QR</label>
+          <input type="url" id="f-profile-url" placeholder="https://your-domain/c/rahul123">
+          <p class="help">
+            This is the permanent URL printed on the card. It must be publicly reachable for a scan to work.
+            <button type="button" class="linklike" id="btn-auto-url">Use this site’s URL</button>
+          </p>
+        </div>
+
+        <div class="field">
+          <label>QR error correction</label>
+          <div class="segmented" role="group" aria-label="QR error correction level" id="ecl-picker">
+            <button type="button" data-ecl="M">M · 15%</button>
+            <button type="button" data-ecl="Q">Q · 25%</button>
+            <button type="button" data-ecl="H">H · 30%</button>
+          </div>
+          <p class="help">
+            Higher correction survives scratches, lamination and coffee rings, at the cost of a denser code.
+            Q is the right default for print.
+          </p>
+        </div>
+      </section>
+
+      <!-- 4. Share controls -->
+      <section class="panel" id="share-controls" aria-labelledby="h-share">
+        <div class="panel-head">
+          <h2 id="h-share">Share</h2>
+          <span class="hint">Two ways to reveal private links.</span>
+        </div>
+
+        <h3 class="sub-head">Quick share — temporary link</h3>
+        <div class="grid grid-2-tight">
+          <div class="field">
+            <label for="f-token-link">Unlocks which link</label>
+            <select id="f-token-link"></select>
+          </div>
+          <div class="field">
+            <label for="f-token-duration">Expires after</label>
+            <!-- Options are generated from AccessRules.LIMITS.tokenDurationsSeconds
+                 by dashboard.js, so a self-hoster who edits the limits sees the
+                 change here without touching this file. -->
+            <select id="f-token-duration"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-token-uses">Uses allowed</label>
+          <select id="f-token-uses">
+            <option value="1">Single use (safest)</option>
+            <option value="5">Up to 5 uses</option>
+            <option value="0">Unlimited until it expires</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn" id="btn-make-token">Generate temporary link</button>
+        </div>
+        <div id="token-output" class="mt2"></div>
+
+        <h3 class="sub-head mt2">Active temporary links</h3>
+        <div id="token-list" class="rows"></div>
+
+        <h3 class="sub-head mt2">Permanent access — followers</h3>
+        <p class="help">
+          A follower signs up, requests access, and you decide. Approved followers see every
+          <em>followers only</em> link whenever they open your URL.
+        </p>
+        <div id="follower-list" class="rows"></div>
+        <div class="btn-row mt2">
+          <button type="button" class="btn btn-ghost" id="btn-simulate-request">Simulate a follower request</button>
+        </div>
+      </section>
+
+      <!-- 5. Your data -->
+      <section class="panel" id="profile-json" aria-labelledby="h-json">
+        <div class="panel-head">
+          <h2 id="h-json">Your profile JSON</h2>
+          <span class="hint">Self-hosting: save this into <code>profile-data/</code>.</span>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-download-json">Download JSON</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-copy-json">Copy</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-toggle-json">Show</button>
+        </div>
+        <pre id="json-view" hidden></pre>
+      </section>
+
+    </div>
+
+    <!-- Right column: live card preview -->
+    <div class="stack preview-col">
+      <section class="panel" id="card-preview" aria-labelledby="h-preview">
+        <div class="panel-head">
+          <h2 id="h-preview">Card preview</h2>
+          <span class="hint" id="preview-template">Midnight</span>
+        </div>
+
+        <div class="card-duo">
+          <figure class="card-frame">
+            <span class="side-label">Front</span>
+            <img id="preview-front" alt="Front of the card">
+          </figure>
+          <figure class="card-frame">
+            <span class="side-label">Back</span>
+            <img id="preview-back" alt="Back of the card with the QR code">
+          </figure>
+        </div>
+
+        <div class="btn-row mt2">
+          <button type="button" class="btn" id="btn-download-pdf">Download PDF</button>
+          <button type="button" class="btn btn-ghost" id="btn-download-png">PNG</button>
+        </div>
+        <div class="btn-row mt1">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-download-svg">SVG</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-print-sheet">Print sheet</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-download-qr">QR only</button>
+          <a class="btn btn-ghost btn-sm" id="btn-qr-tool" href="../qr-generator/">QR sheet tool</a>
+        </div>
+        <p class="help">
+          PDF is vector at exactly 89 × 51 mm — send that to a print shop.
+          PNG is 300 DPI. Both include a 4-module quiet zone around the QR.
+        </p>
+        <div id="export-warnings"></div>
+      </section>
+
+      <section class="panel" id="view-profile" aria-labelledby="h-view">
+        <div class="panel-head">
+          <h2 id="h-view">See it as a visitor</h2>
+        </div>
+        <div class="rows" id="visitor-links"></div>
+      </section>
+    </div>
+  </div>
+
+  <p class="tiny muted center mt2 no-print">
+    V1 keeps your data in this browser (localStorage) and in JSON files you own.
+    There is no account and nothing is uploaded. Server-side profiles, real authentication and enforced
+    tokens are V2 — see <a href="../docs/ARCHITECTURE.md">ARCHITECTURE.md</a>.
+  </p>
+</main>
+
+<script src="../lib/qr.js"></script>
+<script src="../card-templates/card-templates.js"></script>
+<script src="../lib/access.js"></script>
+<script src="../lib/card.js"></script>
+<script src="../lib/pdf.js"></script>
+<script src="../lib/store.js"></script>
+<script src="../lib/export.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card templates — QR Link Card</title>
+<meta name="description" content="Every card template, rendered live from the demo profiles, with the standalone QR code for each.">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-base-depth="1">
+
+<header class="topbar">
+  <a class="brand" href="../index.html">QR Link Card</a>
+  <nav>
+    <a href="../index.html">Overview</a>
+    <a href="../card-builder/">Builder</a>
+    <a href="../dashboard/">Dashboard</a>
+    <a href="profile.html?u=rahul123">Profile</a>
+    <a href="./" aria-current="page">Cards</a>
+    <a href="../qr-generator/">QR tool</a>
+  </nav>
+</header>
+
+<main class="wrap" style="padding-top:26px; padding-bottom:60px">
+  <div class="dash-head">
+    <div>
+      <h1>Card templates</h1>
+      <p class="muted small mb0">
+        Rendered live from the demo profiles — these are the same drawings the PDF and PNG exports come
+        from, not screenshots. Add your own in
+        <a href="../card-templates/card-templates.js">card-templates.js</a>
+        (<a href="../docs/CUSTOMIZATION.md">guide</a>).
+      </p>
+    </div>
+    <div class="btn-row">
+      <a class="btn" href="../card-builder/">Build yours</a>
+      <a class="btn btn-ghost" href="print-sheet.html?u=rahul123">Print sheet</a>
+    </div>
+  </div>
+
+  <div id="alerts"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Profile</h2>
+      <span class="hint">Same templates, different person — the layout adapts to the content length.</span>
+    </div>
+    <div class="segmented" id="profile-picker" role="group" aria-label="Demo profile"></div>
+  </section>
+
+  <div id="templates" class="stack mt2"></div>
+
+  <section class="panel mt2">
+    <div class="panel-head">
+      <h2>The QR on its own</h2>
+      <span class="hint">For an email signature, a poster, or a sticker.</span>
+    </div>
+    <div class="grid grid-2">
+      <div id="qr-standalone" style="max-width:280px"></div>
+      <div class="small muted">
+        <p>
+          The QR encodes <strong>only</strong> the permanent profile URL — never a destination and never a
+          temporary token. That is what makes it safe to print: tokens expire, and a printed code cannot be
+          revoked.
+        </p>
+        <dl class="kv">
+          <dt>Content</dt><dd id="qr-content">—</dd>
+          <dt>Version</dt><dd id="qr-version">—</dd>
+          <dt>Modules</dt><dd id="qr-modules">—</dd>
+          <dt>Error correction</dt><dd id="qr-ecl">Q · recovers 25% damage</dd>
+          <dt>Printed size</dt><dd id="qr-printed">30 mm (spec minimum 20 mm)</dd>
+          <dt>Quiet zone</dt><dd>4 modules, included in every export</dd>
+        </dl>
+        <div class="btn-row mt2">
+          <a class="btn btn-ghost btn-sm" href="../docs/PRINTING.md">Print checklist</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="../lib/qr.js"></script>
+<script src="../card-templates/card-templates.js"></script>
+<script src="../lib/access.js"></script>
+<script src="../lib/card.js"></script>
+<script src="../lib/store.js"></script>
+<script src="assets/card-preview.js"></script>
+</body>
+</html>

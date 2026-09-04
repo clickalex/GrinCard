@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Generator — open-qr-link-card</title>
+<meta name="description" content="Turn a list of URLs into scannable QR codes, one at a time or as a print-ready A4 sheet. Free, open source, runs entirely in your browser.">
+<link rel="stylesheet" href="../demo/assets/styles.css">
+<script src="../lib/qr.js"></script>
+<script src="../card-templates/card-templates.js"></script>
+<script src="../lib/card.js"></script>
+<script src="../lib/pdf.js"></script>
+<script src="../lib/pdfdoc.js"></script>
+<script src="../lib/export.js"></script>
+<script src="generator.js"></script>
+<script src="page.js" defer></script>
+<link rel="stylesheet" href="generator.css">
+</head>
+<body data-base-depth="2">
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="../index.html">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 21 21" width="20" height="20"><path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0zM9 9h3v3H9zM15 15h3v3h-3zM9 15h3v3H9zM15 9h3v3h-3z" fill="currentColor"/></svg>
+      </span>
+      QR Generator
+    </a>
+    <nav class="topnav">
+      <a href="../index.html">Home</a>
+      <a href="../card-builder/index.html">Card builder</a>
+      <a href="../dashboard/index.html">Dashboard</a>
+      <a href="../docs/PRINTING.md">Printing guide</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="page-head">
+    <h1>Generate QR codes</h1>
+    <p class="lede">
+      One code for a card, or a whole sheet of them for stickers, table tents and event badges.
+      Everything is drawn locally with the same encoder the card builder uses — no network calls,
+      no accounts, no limit on how many you make.
+    </p>
+  </section>
+
+  <div class="tabbar" role="tablist" aria-label="Mode">
+    <button type="button" class="btn" role="tab" id="tab-single" aria-selected="true" aria-controls="mode-single">Single QR</button>
+    <button type="button" class="btn" role="tab" id="tab-sheet" aria-selected="false" aria-controls="mode-sheet">Print sheet</button>
+  </div>
+
+  <!-- ============================ SINGLE ============================ -->
+  <div class="gen-grid" id="mode-single" role="tabpanel" aria-labelledby="tab-single">
+    <section class="panel">
+      <h2>Content</h2>
+      <div class="field">
+        <label for="q-text">Text or URL to encode</label>
+        <textarea id="q-text" rows="3" spellcheck="false">https://clickalex.github.io/GrinCard/demo/profile.html?u=rahul123</textarea>
+        <p class="hint">
+          For a card, this must be the <b>permanent</b> profile URL — temporary links expire and
+          should never be printed. See <a href="../docs/ARCHITECTURE.md">the architecture notes</a>.
+        </p>
+      </div>
+
+      <div class="field-grid">
+        <div class="field">
+          <label for="q-ecl">Error correction</label>
+          <select id="q-ecl">
+            <option value="L">L — 7% (smallest)</option>
+            <option value="M" selected>M — 15% (default)</option>
+            <option value="Q">Q — 25% (robust)</option>
+            <option value="H">H — 30% (logo/damage)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="q-size">Symbol size (mm)</label>
+          <input type="number" id="q-size" value="25" min="10" max="200" step="1">
+        </div>
+        <div class="field">
+          <label for="q-quiet">Quiet zone (modules)</label>
+          <input type="number" id="q-quiet" value="4" min="0" max="10" step="1">
+        </div>
+        <div class="field">
+          <label for="q-color">Ink colour</label>
+          <input type="color" id="q-color" value="#111111">
+        </div>
+        <div class="field">
+          <label for="q-bg">Background</label>
+          <input type="color" id="q-bg" value="#ffffff">
+        </div>
+      </div>
+
+      <div class="example-row">
+        <button type="button" class="btn btn-ghost btn-sm" data-example="profile">My profile URL</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-example="wifi">Wi-Fi card</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-example="vcard">vCard</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-example="upi">UPI payment</button>
+      </div>
+
+      <h2 class="mt2">Download</h2>
+      <div class="btn-row">
+        <button type="button" class="btn" id="q-png">PNG (300 DPI)</button>
+        <button type="button" class="btn btn-ghost" id="q-svg">SVG</button>
+        <button type="button" class="btn btn-ghost" id="q-pdf">PDF</button>
+        <button type="button" class="btn btn-ghost" id="q-copy">Copy SVG</button>
+      </div>
+      <div id="q-alerts" class="alerts" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Preview</h2>
+      <div class="single-preview" id="q-preview"></div>
+      <p class="ruler-note mt1">
+        Print at <b>100% / actual size</b>. A 25 mm symbol is comfortably above the 20 mm minimum we
+        recommend for cards; below 15 mm cheap phone cameras start to struggle.
+      </p>
+    </section>
+  </div>
+
+  <!-- ============================ SHEET ============================ -->
+  <div class="gen-grid hidden" id="mode-sheet" role="tabpanel" aria-labelledby="tab-sheet">
+    <section class="panel">
+      <h2>Batch input</h2>
+      <div class="field">
+        <label for="q-list">One QR per line</label>
+        <textarea id="q-list" spellcheck="false" placeholder="Label | https://example.com
+https://example.com/another"></textarea>
+        <p class="hint">
+          Formats accepted: <code>https://…</code>, <code>Label | https://…</code>,
+          <code>Label, https://…</code> or tab-separated. Blank lines and <code>#</code> comments are ignored.
+        </p>
+        <div class="example-row">
+          <button type="button" class="btn btn-ghost btn-sm" id="q-load-demo">Load demo list</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="q-load-profiles">Load demo profiles</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="q-clear">Clear</button>
+        </div>
+      </div>
+
+      <h2 class="mt2">Sheet</h2>
+      <div class="field-grid">
+        <div class="field">
+          <label for="s-paper">Paper</label>
+          <select id="s-paper"></select>
+        </div>
+        <div class="field">
+          <label for="s-size">QR size (mm)</label>
+          <input type="number" id="s-size" value="25" min="12" max="80" step="1">
+        </div>
+        <div class="field">
+          <label for="s-margin">Page margin (mm)</label>
+          <input type="number" id="s-margin" value="10" min="0" max="30" step="1">
+        </div>
+        <div class="field">
+          <label for="s-gap">Gap (mm)</label>
+          <input type="number" id="s-gap" value="4" min="0" max="20" step="1">
+        </div>
+        <div class="field">
+          <label for="s-ecl">Error correction</label>
+          <select id="s-ecl">
+            <option value="L">L — 7%</option>
+            <option value="M" selected>M — 15%</option>
+            <option value="Q">Q — 25%</option>
+            <option value="H">H — 30%</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="s-color">Ink colour</label>
+          <input type="color" id="s-color" value="#111111">
+        </div>
+      </div>
+
+      <label class="check"><input type="checkbox" id="s-labels" checked> <span>Print a label under each code</span></label>
+      <label class="check"><input type="checkbox" id="s-index"> <span>Number each code (for cutting lists)</span></label>
+
+      <h2 class="mt2">Download</h2>
+      <div class="btn-row">
+        <button type="button" class="btn" id="s-pdf">PDF sheet</button>
+        <button type="button" class="btn btn-ghost" id="s-svg">SVG (page 1)</button>
+        <button type="button" class="btn btn-ghost" id="s-print">Print</button>
+      </div>
+      <div id="s-alerts" class="alerts" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Sheet preview</h2>
+      <div class="readout" id="s-stats"></div>
+      <div class="sheet-wrap mt1" id="s-preview"></div>
+      <p class="ruler-note mt1">
+        The preview is scaled to fit your screen; the PDF page box is the exact paper size, so
+        printing at 100% gives true millimetre dimensions.
+      </p>
+    </section>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <p>
+      Part of <a href="../index.html">open-qr-link-card</a> — MIT licensed, zero dependencies,
+      works offline. Encoder: <code>lib/qr.js</code>, sheet writer: <code>lib/pdfdoc.js</code>.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

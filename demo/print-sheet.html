@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print sheet — QR Link Card</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  /* The sheet is laid out in real millimetres so browser printing is 1:1. */
+  .sheet-controls { padding: 20px; }
+  .sheet {
+    display: grid; gap: 8mm; justify-content: center; padding: 10mm 0 30mm;
+  }
+  .sheet-card {
+    width: 89mm; height: 51mm; margin: 0; position: relative;
+    box-shadow: 0 6px 24px rgba(20,20,30,.18); background: #fff;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .sheet-card svg, .sheet-card img { display: block; width: 89mm; height: 51mm; }
+  .sheet-card figcaption {
+    position: absolute; left: 0; bottom: -6mm; font-size: 10px; color: var(--page-muted);
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .sheet-card.bleed { width: 95mm; height: 57mm; }
+  .sheet-card.bleed svg, .sheet-card.bleed img { width: 95mm; height: 57mm; }
+  .ruler {
+    width: 89mm; height: 8mm; margin: 0 auto; border-left: 1px solid #999;
+    border-right: 1px solid #999; position: relative; font-size: 9px; color: #666;
+  }
+  .ruler span { position: absolute; left: 50%; transform: translateX(-50%); top: 1mm; }
+  @media print {
+    .sheet-controls, .topbar, .ruler, .sheet-help { display: none !important; }
+    .sheet { padding: 0; gap: 10mm; }
+    .sheet-card { box-shadow: none; }
+    .sheet-card figcaption { display: none; }
+    body { background: #fff; }
+    @page { size: auto; margin: 8mm; }
+  }
+</style>
+</head>
+<body data-base-depth="1">
+
+<header class="topbar no-print">
+  <a class="brand" href="../index.html">QR Link Card</a>
+  <nav>
+    <a href="../card-builder/">Builder</a>
+    <a href="../dashboard/">Dashboard</a>
+    <a href="profile.html">Profile</a>
+    <a href="../qr-generator/">QR tool</a>
+  </nav>
+</header>
+
+<main>
+  <div class="sheet-controls wrap no-print">
+    <h1>Print sheet</h1>
+    <p class="muted small">
+      Both sides at true size (89 × 51 mm). Print at <strong>100% / “actual size”</strong> — never “fit to
+      page”, or the QR shrinks below the reliable minimum. Measure the ruler below with a real ruler to
+      check your printer's scaling before you waste card stock.
+    </p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="btn-print">Print…</button>
+      <button type="button" class="btn btn-ghost" id="btn-bleed">Toggle 3 mm bleed</button>
+      <a class="btn btn-ghost" id="btn-pdf" href="../dashboard/">Download the PDF instead</a>
+    </div>
+    <p class="tiny muted mt1" id="sheet-note"></p>
+  </div>
+
+  <div class="ruler no-print"><span>89 mm — this bar should measure exactly 89 mm</span></div>
+
+  <div class="sheet" id="sheet">
+    <div class="empty-links">Loading card…</div>
+  </div>
+
+  <div class="wrap sheet-help no-print">
+    <div class="notice notice-info small">
+      <div>
+        <strong>Before you print a hundred of them:</strong> print one, scan it with two different phones
+        in daylight and in dim light, and check the quiet zone (the white margin around the QR) is at
+        least 4 modules wide. Full checklist in <a href="../docs/PRINTING.md">docs/PRINTING.md</a>.
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../lib/qr.js"></script>
+<script src="../card-templates/card-templates.js"></script>
+<script src="../lib/access.js"></script>
+<script src="../lib/card.js"></script>
+<script src="../lib/store.js"></script>
+<script src="assets/print-sheet.js"></script>
+</body>
+</html>

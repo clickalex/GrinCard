@@ -1,0 +1,79 @@
+/* qr-generator — page styles layered on top of demo/assets/styles.css.
+   Colours come from the shared :root variables so this tool looks like the rest
+   of the project without duplicating the theme. */
+
+.gen-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 940px) { .gen-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.page-head { margin: 26px 0 18px; }
+.page-head h1 { margin-bottom: 6px; }
+.page-head .lede { max-width: 66ch; color: var(--page-muted); font-size: 17px; margin: 0; }
+
+.tabbar { display: flex; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
+.tabbar .btn[aria-selected="true"] { background: var(--page-text); color: #fff; }
+
+textarea#q-list, textarea#q-text {
+  width: 100%; resize: vertical;
+  font-family: var(--mono); font-size: 13px; line-height: 1.65;
+  padding: 10px 12px; border: 1px solid var(--page-border); border-radius: 10px;
+  background: var(--page-surface); color: var(--page-text);
+}
+textarea#q-list { min-height: 168px; }
+
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+
+.example-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+.readout {
+  display: flex; flex-wrap: wrap; gap: 6px 20px;
+  font-size: 13.5px; color: var(--page-muted); margin: 0;
+}
+.readout b { color: var(--page-text); font-variant-numeric: tabular-nums; font-weight: 600; }
+.ruler-note { font-size: 13px; color: var(--page-muted); }
+
+/* ---------- single preview -------------------------------------------- */
+
+.single-preview {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  padding: 18px; border: 1px solid var(--page-border); border-radius: 12px;
+  background: var(--page-surface);
+}
+.single-preview .qr-holder svg { width: 158px; height: 158px; display: block; }
+.single-preview .qr-meta { flex: 1 1 220px; min-width: 0; }
+.single-preview .qr-meta dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13.5px; }
+.single-preview .qr-meta dt { color: var(--page-muted); }
+.single-preview .qr-meta dd { margin: 0; font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+
+/* ---------- sheet preview --------------------------------------------- */
+
+.sheet-wrap {
+  background: #6b6f76; border-radius: 12px; padding: 18px;
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+  max-height: 76vh; overflow: auto;
+}
+.sheet-page {
+  background: #fff; box-shadow: 0 8px 26px rgba(0, 0, 0, .34);
+  width: 100%; max-width: 600px;
+}
+.sheet-page svg { display: block; width: 100%; height: auto; }
+.page-tag { color: #e4e6ea; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+
+.demo-tokens .tiny { margin: 0 0 8px; }
+
+.alerts { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.alerts:empty { display: none; }
+
+.hidden { display: none !important; }
+
+@media print {
+  .topbar, .tabbar, .panel:has(#q-list), .ruler-note, footer.site { display: none !important; }
+  .gen-grid { grid-template-columns: 1fr; }
+  .sheet-wrap { background: none; padding: 0; max-height: none; overflow: visible; }
+  .sheet-page { box-shadow: none; max-width: none; }
+  .page-tag { color: #000; }
+}

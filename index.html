@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Link Card — a printed card that never goes out of date</title>
+<meta name="description" content="Open-source link-in-bio plus printable business card. The QR points at a permanent URL; the server decides what each visitor sees: public links, a temporary private link, or everything for approved followers.">
+<link rel="stylesheet" href="demo/assets/styles.css">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect width='22' height='22' rx='5' fill='%2316161d'/%3E%3Crect x='4' y='4' width='5' height='5' fill='%23f2b134'/%3E%3Crect x='13' y='4' width='5' height='5' fill='%23fff'/%3E%3Crect x='4' y='13' width='5' height='5' fill='%23fff'/%3E%3Crect x='16' y='16' width='2' height='2' fill='%23f2b134'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="./" aria-label="QR Link Card home">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+      <rect width="22" height="22" rx="5" fill="#16161d"/>
+      <rect x="4" y="4" width="5" height="5" fill="#f2b134"/>
+      <rect x="13" y="4" width="5" height="5" fill="#fff"/>
+      <rect x="4" y="13" width="5" height="5" fill="#fff"/>
+      <rect x="13" y="13" width="2" height="2" fill="#fff"/>
+      <rect x="16" y="16" width="2" height="2" fill="#f2b134"/>
+    </svg>
+    QR Link Card
+  </a>
+  <nav>
+    <a href="./" aria-current="page">Overview</a>
+    <a href="card-builder/">Builder</a>
+    <a href="dashboard/">Dashboard</a>
+    <a href="demo/profile.html?u=rahul123">Demo profile</a>
+    <a href="demo/card-preview.html">Cards</a>
+    <a href="qr-generator/">QR tool</a>
+    <a href="SETUP.md">Docs</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ============================ hero ============================ -->
+  <section class="hero wrap">
+    <div class="qr-badge">
+      <div id="hero-qr" aria-hidden="true"></div>
+      <div class="cap" id="hero-qr-cap">scan me</div>
+    </div>
+    <h1>Print it once. Change the links forever.</h1>
+    <p class="lede">
+      QR Link Card is a printable profile card whose QR code points at a URL you control
+      — not at your Instagram, not at your portfolio. Change your links, move platforms,
+      hide your pricing from strangers: the card in someone's wallet updates itself.
+    </p>
+    <div class="btn-row" style="justify-content:center">
+      <a class="btn btn-accent" href="card-builder/">Build your card</a>
+      <a class="btn btn-ghost" href="demo/profile.html?u=rahul123">See the demo profile</a>
+    </div>
+    <p class="tiny muted mt2">
+      Free and MIT licensed · no build step · no dependencies · runs on GitHub Pages or any static host
+    </p>
+  </section>
+
+  <!-- ======================= the actual problem ======================= -->
+  <section class="section wrap" id="problem">
+    <h2>The problem with printed QR codes</h2>
+    <p class="lede">
+      A printed code is frozen. If it points straight at <code>instagram.com/you</code>, then the day you
+      switch platforms, add a portfolio, or decide a stranger shouldn't see your wholesale pricing —
+      the card is wrong and you have to print it again. Most people just never print one.
+    </p>
+    <div class="grid grid-2 mt2">
+      <div class="panel compare-panel">
+        <h3 class="bad">Printed: the destination</h3>
+        <pre><code>QR → https://instagram.com/you</code></pre>
+        <ul class="tick cross">
+          <li>Change platform → reprint the card</li>
+          <li>Add a portfolio → reprint the card</li>
+          <li>Hide your pricing → too late, it's printed</li>
+          <li>Everyone sees exactly the same thing</li>
+        </ul>
+      </div>
+      <div class="panel compare-panel good">
+        <h3 class="ok">Printed: your URL</h3>
+        <pre><code>QR → https://yourdomain/c/rahul123</code></pre>
+        <ul class="tick">
+          <li>Edit links whenever you like — the card stays correct</li>
+          <li>Strangers see public links only</li>
+          <li>A temporary link unlocks one private link, then expires</li>
+          <li>Approved followers see everything</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ tiers ============================ -->
+  <section class="section wrap" id="tiers">
+    <h2>One URL, three tiers of access</h2>
+    <p class="lede">
+      The same printed code serves different content depending on who is holding the phone.
+      Click any card to see it live — these are real pages, not screenshots.
+    </p>
+    <div class="tiers mt2">
+      <a class="tier" href="demo/profile.html?u=rahul123">
+        <h3><span class="badge badge-public">Public</span></h3>
+        <p class="url">/c/rahul123</p>
+        <p><strong>A stranger scans the card.</strong> They see public links only — Instagram, portfolio,
+        email. The WhatsApp number and the pricing list are simply not there. No account needed.</p>
+      </a>
+      <a class="tier" href="demo/profile.html?u=rahul123&amp;t=temp_demo_live">
+        <h3><span class="badge badge-private">Temporary</span></h3>
+        <p class="url">/c/rahul123?t=temp_demo_live</p>
+        <p><strong>You send a link that expires.</strong> The token unlocks exactly one private link —
+        say your pricing list — for 10 minutes or 24 hours. After that the same URL quietly falls back
+        to the public view.</p>
+      </a>
+      <a class="tier" href="demo/profile.html?u=rahul123&amp;viewer=user_priya">
+        <h3><span class="badge badge-tier">Approved</span></h3>
+        <p class="url">/c/rahul123 <span class="muted">+ session</span></p>
+        <p><strong>A trusted client signs up and you approve them.</strong> From then on they see every
+        link whenever they open your URL. Revoke it any time and they drop back to public.</p>
+      </a>
+    </div>
+    <div class="notice notice-warn mt2 small">
+      <div>
+        <strong>Honest caveat about V1.</strong> This release is a static site: the profile JSON is fetched
+        by the browser, so the private URLs are technically on the visitor's device even though they are
+        never rendered. The tier logic here is the real logic, but enforcement needs a server. That is
+        exactly what V2 adds — see <a href="docs/ARCHITECTURE.md">ARCHITECTURE.md</a>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ card ============================ -->
+  <section class="section wrap" id="card">
+    <h2>And it is a real card</h2>
+    <p class="lede">
+      89 × 51 mm, 300 DPI, 3 mm bleed, vector QR, a quiet zone that scanners actually need.
+      Download a PDF and hand it to a print shop. These previews are drawn live from the demo profiles.
+    </p>
+    <div id="showcase" class="showcase mt2"></div>
+    <div class="btn-row mt2" style="justify-content:center">
+      <a class="btn" href="card-builder/">Design yours</a>
+      <a class="btn btn-ghost" href="demo/card-preview.html">All templates</a>
+      <a class="btn btn-ghost" href="docs/PRINTING.md">Print guide</a>
+    </div>
+  </section>
+
+  <!-- ============================ compare ============================ -->
+  <section class="section wrap" id="compare">
+    <h2>Why not just use Linktree?</h2>
+    <p class="lede">Link-in-bio tools give you a page. This gives you a page <em>and</em> a card, plus access
+      control that a page-only tool cannot express.</p>
+    <div class="table-wrap mt2">
+      <table class="compare">
+        <thead>
+          <tr><th>Capability</th><th>Linktree &amp; co.</th><th>QR Link Card</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Digital bio page</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+          <tr><td>Printable card design</td><td class="no">No</td><td class="yes">Yes</td></tr>
+          <tr><td>Print-ready PDF at exact size</td><td class="no">No</td><td class="yes">Yes</td></tr>
+          <tr><td>Same code, different content per visitor</td><td class="no">No</td><td class="yes">Yes</td></tr>
+          <tr><td>Temporary, expiring links</td><td class="no">No</td><td class="yes">Yes</td></tr>
+          <tr><td>Follower approval + revocation</td><td class="no">No</td><td class="yes">Yes</td></tr>
+          <tr><td>Link limits on the free tier</td><td class="no">Yes</td><td class="yes">None in the core</td></tr>
+          <tr><td>Open source &amp; self-hostable</td><td class="no">No</td><td class="yes">MIT</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================ use cases ============================ -->
+  <section class="section wrap" id="use-cases">
+    <h2>Who this is for</h2>
+    <div class="grid grid-3 mt2">
+      <div class="panel">
+        <h3>Freelancers</h3>
+        <p class="small muted">
+          Public: Instagram, portfolio, email. Private: price list, contract PDF, WhatsApp.
+          Hand out cards at a market — strangers see your work, a serious client gets a 24-hour link to
+          your rates.
+        </p>
+      </div>
+      <div class="panel">
+        <h3>Shopkeepers</h3>
+        <p class="small muted">
+          Public: shop Instagram, Maps pin, catalogue. Private: wholesale pricing, supplier contact,
+          delivery schedule. Slip a card into every order; approve retail partners once.
+        </p>
+      </div>
+      <div class="panel">
+        <h3>Students &amp; job seekers</h3>
+        <p class="small muted">
+          Public: LinkedIn, GitHub, portfolio. Private: resume PDF, reference contacts, personal number.
+          Recruiters get approved access instead of you emailing your phone number to strangers.
+        </p>
+      </div>
+    </div>
+    <div class="panel mt2">
+      <h3>No card? Still useful.</h3>
+      <p class="small muted mb0">
+        The card is optional. Put the URL in your bio, mint expiring links and send them over WhatsApp,
+        approve followers from the dashboard. Everything works digitally — printing is just an upgrade
+        for in-person networking.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ how it works ============================ -->
+  <section class="section wrap" id="how">
+    <h2>How a scan is answered</h2>
+    <p class="lede">The whole product is this decision, made on every request. It lives in
+      <a href="lib/access.js"><code>lib/access.js</code></a> and is covered by
+      <a href="tests/access.test.js">tests</a>.</p>
+    <pre><code>FUNCTION handleProfileRequest(username, request):
+    profile  = getProfile(username)
+    registry = getTokensAndFollowers(username)
+
+    IF request has a session AND that user is approved by the owner:
+        RETURN render(profile.links [public + followers_only])   # tier: follower
+
+    IF request.query has "t":
+        token = registry.find(request.query.t)
+        IF token exists AND not expired AND uses remain:
+            RETURN render(profile.links [public] + [token.target_link])  # tier: temporary
+        ELSE:
+            RETURN render(profile.links [public])                # silently fall back
+
+    RETURN render(profile.links [public])                        # tier: public</code></pre>
+    <p class="small muted">
+      Notice what never happens: a private URL is never printed, never encoded into a QR, and never
+      served to someone who has not been given it. The printed artefact contains one thing — your
+      permanent URL.
+    </p>
+  </section>
+
+  <!-- ============================ quick start ============================ -->
+  <section class="section wrap" id="quickstart">
+    <h2>Run it in thirty seconds</h2>
+    <div class="grid grid-2 mt2">
+      <div class="panel">
+        <h3>Look at the demo</h3>
+        <pre><code>git clone https://github.com/clickalex/GrinCard.git
+cd GrinCard
+python3 -m http.server 8080
+# open http://localhost:8080</code></pre>
+        <p class="small muted mb0">No install, no build, no dependencies. A browser and a static server.</p>
+      </div>
+      <div class="panel">
+        <h3>Run the tests</h3>
+        <pre><code>npm install      # dev oracles only
+npm test         # 59 tests</code></pre>
+        <p class="small muted mb0">
+          The QR encoder is compared module-for-module against a reference implementation, and generated
+          PDFs are rendered at 300 DPI and decoded with an independent QR reader.
+        </p>
+      </div>
+    </div>
+    <div class="btn-row mt2" style="justify-content:center">
+      <a class="btn btn-ghost" href="SETUP.md">Setup guide</a>
+      <a class="btn btn-ghost" href="docs/ARCHITECTURE.md">Architecture</a>
+      <a class="btn btn-ghost" href="docs/CUSTOMIZATION.md">Add a template</a>
+      <a class="btn btn-ghost" href="CONTRIBUTING.md">Contribute</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap foot-grid">
+    <div>
+      <strong>QR Link Card</strong>
+      <p class="small mb0">Free and open source under the MIT license. Bring your own domain, keep your own data.</p>
+    </div>
+    <div class="small">
+      <a href="SETUP.md">Setup</a> ·
+      <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+      <a href="docs/API.md">API (V2)</a> ·
+      <a href="docs/PRINTING.md">Printing</a> ·
+      <a href="docs/CUSTOMIZATION.md">Customization</a> ·
+      <a href="CONTRIBUTING.md">Contributing</a> ·
+      <a href="PLANNING.md">Roadmap</a>
+    </div>
+  </div>
+</footer>
+
+<script src="lib/qr.js"></script>
+<script src="card-templates/card-templates.js"></script>
+<script src="lib/access.js"></script>
+<script src="lib/card.js"></script>
+<script src="assets/landing.js"></script>
+</body>
+</html>

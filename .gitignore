@@ -1,0 +1,25 @@
+# Nothing in this project needs building or installing: the site is plain
+# HTML/CSS/JS and runs from a static server. These entries exist so that
+# local experiments and OS junk stay out of commits.
+
+# Test oracles (qrcode, jsqr, pdfjs-dist, @napi-rs/canvas, jsdom). The tests look
+# for them outside the repo — /tmp/oracle by default, or QR_ORACLE_DIR, or a
+# gitignored .oracle/ here. Nothing in the shipped site uses them.
+# See tests/oracle.js and CONTRIBUTING.md#the-dev-only-oracles.
+node_modules/
+.oracle/
+package-lock.json
+npm-debug.log*
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Local artifacts
+/tmp/
+*.log
+profile-data/*.local.json

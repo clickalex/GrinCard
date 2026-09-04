@@ -1,0 +1,38 @@
+{
+  "username": "yourname",
+  "display_name": "Your Name",
+  "designation": "What you do",
+  "tagline": "One short line, optional",
+  "photo_url": "",
+  "profile_url": "https://YOUR-DOMAIN/c/yourname",
+  "theme": "template-1",
+  "created_at": "2026-09-04T10:00:00Z",
+  "links": [
+    {
+      "id": "lnk_1",
+      "label": "Instagram",
+      "url": "https://instagram.com/yourname",
+      "visibility": "public",
+      "order": 1
+    },
+    {
+      "id": "lnk_2",
+      "label": "Portfolio",
+      "url": "https://yourname.example.com",
+      "visibility": "public",
+      "order": 2
+    },
+    {
+      "id": "lnk_3",
+      "label": "WhatsApp",
+      "url": "https://wa.me/910000000000",
+      "visibility": "followers_only",
+      "order": 3
+    }
+  ],
+  "card_settings": {
+    "template_id": "template-1",
+    "primary_color": "#1a1a2e",
+    "show_photo": true
+  }
+}

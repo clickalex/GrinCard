@@ -14,6 +14,7 @@ const QR = require('../lib/qr.js');
 const Card = require('../lib/card.js');
 const Pdf = require('../lib/pdf.js');
 const TPL = require('../card-templates/card-templates.js');
+const Store = require('../lib/store.js');
 const ORACLE = require('./oracle.js');
 const jsQRModule = ORACLE.optional('jsqr');
 const jsQR = jsQRModule ? (jsQRModule.default || jsQRModule) : null;
@@ -388,6 +389,62 @@ test('PDF: rendering the printed page and decoding it recovers the URL', { skip:
   const decoded = jsQR(pixels, width, height);
   assert.ok(decoded, 'a 300 DPI render of the PDF must be scannable');
   assert.equal(decoded.data, PROFILE_URL);
+});
+
+test('a fork prints its own address: derived URL survives the whole print path',
+  { skip: !ORACLE.available ? ORACLE.INSTALL_HINT : false }, async () => {
+  // The premise of this repository, end to end. Somebody forks it, never types a URL,
+  // and prints a card. What the camera reads back must be *their* site — not this
+  // project's, not a fixture's, not a relative path a scanner cannot resolve.
+  //
+  // Every other test here hands buildCard() a URL constant. This one derives it the way
+  // a deployed page does, then goes all the way to pixels and back through an
+  // independent decoder. It is the only test that would catch a hardcoded deployment URL.
+  const forks = [
+    { root: 'https://riley.github.io/cards/', user: 'riley' },      // Pages project site
+    { root: 'https://riley.dev/',              user: 'riley' },      // custom domain at root
+    { root: 'http://localhost:8080/',          user: 'yourname' }    // local preview
+  ];
+
+  for (const { root, user } of forks) {
+    Store.setSiteRoot(root);
+    const derived = Store.profileUrlFor(user);
+    assert.equal(derived, root.replace(/\/$/, '') + '/c/' + user + '/',
+      'the derivation itself must produce the canonical /c/<username>/ shape');
+    assert.ok(derived.startsWith('http'), 'a QR carrying a relative URL is unscannable nonsense');
+
+    const card = Card.buildCard({ ...PROFILE, username: user }, { profileUrl: derived });
+    const { bytes, warnings } = Pdf.generate(card);
+    assert.deepEqual(warnings.filter(w => /qr|url/i.test(w)), [], warnings.join('; '));
+
+    const scale = 300 / 72;   // what a print shop uses
+    const pixels = await renderPage(bytes, 2, scale);
+    const width = Math.ceil(89 * Pdf.PT_PER_MM * scale);
+    const height = Math.ceil(51 * Pdf.PT_PER_MM * scale);
+    const decoded = jsQR(pixels, width, height);
+
+    assert.ok(decoded, `${root}: the 300 DPI render must be scannable`);
+    assert.equal(decoded.data, derived,
+      `${root}: the printed code must decode to this fork's own derived URL`);
+    assert.ok(!/qrlinkcard\.example|clickalex/.test(decoded.data),
+      'no upstream or fixture URL may reach a printed card: ' + decoded.data);
+  }
+  Store.setSiteRoot(null);
+
+  // An absolute override is the one legitimate way to print a different address: a domain
+  // you own that is not where the site is served. It must survive printing too.
+  Store.setSiteRoot('https://riley.github.io/cards/');
+  const custom = Store.profileUrlFor('riley', { profile_url: 'https://cards.riley.photo/c/riley/' });
+  assert.equal(custom, 'https://cards.riley.photo/c/riley/');
+  const customCard = Card.buildCard({ ...PROFILE, username: 'riley' }, { profileUrl: custom });
+  const customPdf = Pdf.generate(customCard);
+  const customScale = 300 / 72;
+  const customPixels = await renderPage(customPdf.bytes, 2, customScale);
+  const customDecoded = jsQR(customPixels,
+    Math.ceil(89 * Pdf.PT_PER_MM * customScale), Math.ceil(51 * Pdf.PT_PER_MM * customScale));
+  assert.ok(customDecoded, 'the custom-domain card must be scannable');
+  assert.equal(customDecoded.data, custom, 'and must decode to the domain the owner chose');
+  Store.setSiteRoot(null);
 });
 
 test('PDF: text is real text (searchable), not outlines', { skip: !ORACLE.available ? ORACLE.INSTALL_HINT : false }, async () => {

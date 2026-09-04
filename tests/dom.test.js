@@ -145,7 +145,24 @@ async function loadPage(rel, options) {
   const bodyAttrs = Object.assign({}, options.bodyAttrs);
   if (options.profileDir) bodyAttrs['data-profile-dir'] = options.profileDir;
   if (options.username) bodyAttrs['data-username'] = options.username;
-  const html = withBodyAttrs(fs.readFileSync(file, 'utf8'), bodyAttrs);
+  let html = withBodyAttrs(fs.readFileSync(file, 'utf8'), bodyAttrs);
+  // omitScripts removes a <script> tag before jsdom parses the page. This is how a
+  // test reproduces "profile.js is running and boot.js has not arrived yet", which is
+  // a real state rather than a hypothetical one: 404.html injects its scripts one at a
+  // time over the network, so profile.js's selfStart() timer fires while boot.js is
+  // still in flight. Timing cannot be asserted reliably, but the state it produces can.
+  // bodyHtml inserts markup just inside <body>. Used with omitScripts to stand in for
+  // what the omitted script would have built by the time the code under test runs —
+  // boot.js creates #profile-root before it hands over, so a test that omits boot.js
+  // still needs that element to exist for the renderer to have somewhere to draw.
+  if (options.bodyHtml) {
+    html = html.replace(/(<body\b[^>]*>)/i, '$1' + options.bodyHtml);
+  }
+  (options.omitScripts || []).forEach((needle) => {
+    const before = html;
+    html = html.replace(new RegExp('<script[^>]*src="[^"]*' + needle + '"[^>]*>\\s*</script>', 'gi'), '');
+    assert.notEqual(html, before, 'omitScripts found no script matching ' + needle);
+  });
   // deployBase simulates a project site served from /<repo>/ rather than a domain
   // root; urlOverride simulates a file served at a URL it does not live at (404.html).
   const base = options.deployBase ? options.deployBase.replace(/\/$/, '') + '/' : '/';
@@ -926,6 +943,71 @@ test('404.html serves /c/<username>/ in place, with no redirect', { skip: NO_JSD
     'the username must come from the requested path, not from the file being served');
   assert.match(doc.body.textContent, /Your Name/, 'the starter profile should render in place');
   assert.ok(doc.querySelector('#profile-root .link-card'), 'links should render');
+});
+
+test('the renderer resolves the person from the page when no host has booted', { skip: NO_JSDOM }, async () => {
+  // 404.html injects its scripts one at a time over the network, so profile.js's
+  // selfStart() timer fires before boot.js has downloaded and published
+  // window.ProfileBoot. The renderer therefore boots with no host at all — and it
+  // used to answer that by falling back to the first profile in the manifest.
+  //
+  // On a one-person deployment that is indistinguishable from correct, which is why
+  // the test above passes either way. With a second person it renders somebody else
+  // at a printed card URL. examples/ lists meera9 before rahul123, so asking for
+  // rahul123 is the discriminating case: the wrong answer is a real profile.
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8'));
+  assert.equal(manifest.profiles[0], 'meera9', 'this test needs meera9 listed first, as the decoy');
+  const asked = manifest.profiles[manifest.profiles.length - 1];
+  assert.equal(asked, 'rahul123');
+
+  // boot.js omitted on purpose. In production this is the state profile.js is in when
+  // selfStart()'s timer beats boot.js over the network: 404.html has already put
+  // data-username on <body> (that is what bootApp does before injecting anything), but
+  // window.ProfileBoot does not exist yet. With boot.js present the harness resolves
+  // the username through the host and never reaches the fallback, so the test passes
+  // whether or not the fix is there.
+  const { doc, errors } = await loadPage('profile/index.html', {
+    profileDir: '../examples/',
+    username: asked,
+    omitScripts: ['boot.js'],
+    // The shell boot.js builds before handing over. In the real race this exists by the
+    // time the fallback render happens, because boot.js has executed even though its
+    // handover has not — only the ordering of the two differs, not what is on the page.
+    bodyHtml: '<div class="profile-shell"><div class="profile" id="profile-root" aria-live="polite"></div></div>',
+    settleMs: 2000
+  });
+  assert.deepEqual(errors.filter(e => !/404|probe/.test(e)), [], errors.join('\n'));
+  assert.equal(doc.body.getAttribute('data-username'), asked,
+    'the host must pass the username in the markup');
+
+  // Read the expected names from the fixtures rather than hardcoding them, so this
+  // test does not rot when a fixture is renamed.
+  const askedProfile = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', asked + '.json'), 'utf8'));
+  const decoy = manifest.profiles.find(u => u !== asked);
+  const decoyProfile = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', decoy + '.json'), 'utf8'));
+  assert.notEqual(askedProfile.display_name, decoyProfile.display_name,
+    'the decoy must be a visibly different person, or the test proves nothing');
+
+  const name = (doc.querySelector('#profile-root .profile-name') || {}).textContent || '';
+  assert.equal(name.trim(), askedProfile.display_name,
+    'rendered "' + name.trim() + '" — the fallback must not substitute another profile');
+  assert.ok(!doc.getElementById('profile-root').textContent.includes(decoyProfile.display_name),
+    'the decoy profile (' + decoyProfile.display_name + ') must not appear in the render');
+
+  // And an unknown name gets an honest empty state rather than a plausible person.
+  const unknown = await loadPage('profile/index.html', {
+    profileDir: '../examples/', username: 'does-not-exist',
+    omitScripts: ['boot.js'],
+    bodyHtml: '<div class="profile-shell"><div class="profile" id="profile-root" aria-live="polite"></div></div>',
+    settleMs: 2000
+  });
+  const unknownText = unknown.doc.getElementById('profile-root').textContent;
+  assert.match(unknownText, /No profile here/, 'an unknown name must say so');
+  for (const who of [askedProfile, decoyProfile]) {
+    assert.ok(!unknownText.includes(who.display_name),
+      'an unknown name must not render ' + who.display_name + ': ' +
+      unknownText.replace(/\s+/g, ' ').slice(0, 80));
+  }
 });
 
 test('404.html shows a useful page for a path that is not a profile', { skip: NO_JSDOM }, async () => {

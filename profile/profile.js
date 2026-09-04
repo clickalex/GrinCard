@@ -21,6 +21,8 @@
   var TPL = window.CardTemplates;
   var Boot = null;
   var started = false;
+  var generation = 0;     // incremented by every authoritative boot()
+  var renderedAs = null;  // the username the DOM currently represents
 
   /** Link to a site-root-relative path, from wherever this page is running. */
   function link(path) { return Store.rootRelative(path); }
@@ -253,31 +255,70 @@
     ]));
   }
 
+  /**
+   * Whose profile is this page for, when no host has told us?
+   *
+   * Mirrors resolveUsername() in profile/boot.js, and it has to exist here because a
+   * host that injects scripts one at a time over the network — which is exactly what
+   * 404.html does — can let selfStart() fire before boot.js has even downloaded, so
+   * window.ProfileBoot is still undefined. Guessing "the first profile in the
+   * manifest" at that moment renders somebody else at /c/<their-name>/, silently, and
+   * on a single-profile deployment it looks perfectly correct.
+   *
+   * The order matches boot.js: an explicit host attribute first, then the query, then
+   * the /c/<username>/ path segment.
+   */
+  function usernameFromPage(params) {
+    var body = document.body;
+    var fromAttr = body && body.getAttribute('data-username');
+    if (fromAttr) return fromAttr.trim();
+    if (window.QR_PROFILE_USERNAME) return String(window.QR_PROFILE_USERNAME).trim();
+    if (params.u) return String(params.u).trim();
+    if (params.username) return String(params.username).trim();
+
+    var m = /\/c\/([^/?#]+)\/?$/.exec(location.pathname);
+    if (m) {
+      try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+    }
+    return '';
+  }
+
   function boot(api) {
-    if (started) return;
-    started = true;
     Boot = api || window.ProfileBoot || null;
 
     var params = Boot ? Boot.params : qs();
-    var username = Boot ? Boot.username : (params.u || params.username || '').trim();
+    var username = Boot ? Boot.username : usernameFromPage(params);
+
+    // An earlier pass with no host and no username in the page may already have
+    // rendered a guess. If we now know who this page is really for and it is somebody
+    // else, render again — keeping the guess would leave the wrong person at this URL.
+    if (started && username && username !== renderedAs) started = false;
+    if (started) return;
+    started = true;
+
+    var gen = ++generation;
 
     if (!username) {
-      // Nothing in the URL: fall back to whoever was edited most recently in this
-      // browser, then to the first profile this deployment actually has.
+      // Nothing in the URL and nothing in the markup either: fall back to whoever was
+      // edited most recently in this browser, then to the first profile this
+      // deployment actually has. Legitimate only when the page named nobody.
       username = Store.getLastUsername() || '';
     }
     if (!username) {
       Store.listProfiles().then(function (list) {
+        if (gen !== generation) return;   // an authoritative boot() took over
         var first = list.filter(function (p) { return !p._starter; })[0] || list[0];
-        if (first) boot2(first.username, params);
+        if (first) boot2(first.username, params, gen);
         else notFound('');
-      }).catch(function () { notFound(''); });
+      }).catch(function () { if (gen === generation) notFound(''); });
       return;
     }
-    boot2(username, params);
+    boot2(username, params, gen);
   }
 
-  function boot2(username, params) {
+  function boot2(username, params, gen) {
+    gen = gen || generation;
+    renderedAs = username || null;
 
     // `?viewer=` stands in for a session cookie so the follower tier is
     // demonstrable without a backend. The dashboard sets the same key.
@@ -286,6 +327,7 @@
 
     Promise.all([Store.loadProfile(username), Store.loadRegistry(username)])
       .then(function (results) {
+        if (gen !== generation) return;   // a newer boot() owns the DOM now
         var profile = results[0];
         var registry = results[1];
         if (!profile) { notFound(username); return; }
@@ -295,6 +337,7 @@
         render(checked.ok ? checked.profile : profile, access, params);
       })
       .catch(function (err) {
+        if (gen !== generation) return;
         var root = root_();
         root.innerHTML = '';
         root.appendChild(el('div', { class: 'notice notice-danger' }, [
@@ -318,10 +361,15 @@
    *
    * The deferred call matters. boot.js is loaded after this file, so its
    * DOMContentLoaded listener is registered second and runs second. Starting
-   * synchronously here would win that race with no username in hand and fall back
-   * to whichever profile happens to be first in the manifest — rendering the wrong
-   * person, silently. One turn of the event loop is enough for boot.js to publish
-   * window.ProfileBoot, after which this does nothing.
+   * synchronously here would win that race with no username in hand.
+   *
+   * One turn of the event loop is enough when both scripts are in the markup, because
+   * boot.js executes during the same DOMContentLoaded dispatch and publishes
+   * window.ProfileBoot before this timer fires. It is NOT enough when a host injects
+   * the scripts one at a time over the network — 404.html does exactly that, so this
+   * timer wins and boot() runs with no host at all. usernameFromPage() is what makes
+   * that safe: it reads the username the host put in the markup, so the guess is the
+   * right answer. boot() also re-renders if an authoritative api names somebody else.
    */
   function selfStart() {
     setTimeout(function () {

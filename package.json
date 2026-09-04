@@ -1,7 +1,7 @@
 {
   "name": "open-qr-link-card",
   "version": "1.0.0",
-  "description": "A printable card whose permanent QR code shows different links depending on who is looking: public, temporary or approved-follower. Static, dependency-free, MIT.",
+  "description": "Printable QR business cards whose link page changes with the visitor. Fork it, edit one JSON file, deploy to GitHub Pages, print the card.",
   "private": true,
   "scripts": {
     "test": "node --test tests/access.test.js tests/qr.test.js tests/card.test.js tests/generator.test.js tests/dom.test.js",
@@ -10,6 +10,11 @@
     "test:card": "node --test tests/card.test.js",
     "test:generator": "node --test tests/generator.test.js",
     "test:dom": "node --test tests/dom.test.js",
+    "build": "node tools/build-links.js && node tools/build-templates.js",
+    "build:links": "node tools/build-links.js",
+    "build:templates": "node tools/build-templates.js",
+    "validate": "node tools/build-links.js --check && node tools/build-templates.js --check",
+    "clean": "node tools/build-links.js --clean",
     "start": "python3 -m http.server 8080"
   },
   "keywords": [

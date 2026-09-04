@@ -352,3 +352,66 @@ footer.site a { text-decoration: underline; text-underline-offset: 3px; }
 }
 
 @page { margin: 10mm; }
+
+/* ---------- the site root: your card index -------------------------------
+   Generated and derived pages (index.html, c/index.html, 404.html) share these. */
+
+.wrap.narrow, .wrap-narrow { max-width: 620px; }
+
+.panel-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.danger-text { color: var(--danger); }
+.mt2 { margin-top: 16px; }
+
+/* first-run: shown until the starter profile is replaced */
+.first-run { border-color: rgba(242, 177, 52, .5); background: linear-gradient(180deg, rgba(242,177,52,.07), rgba(255,255,255,0)); }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
+.steps li { line-height: 1.55; }
+.steps .step-body { display: block; color: var(--page-muted); font-size: 13.5px; margin-top: 3px; }
+.steps code, .tier-card code, .url-row code { font-size: 12.5px; }
+
+/* one row per profile */
+.cards-index { display: block; }
+.card-index-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.card-index-row {
+  display: grid; gap: 18px; grid-template-columns: 1fr;
+  border: 1px solid var(--page-border); border-radius: 14px; padding: 16px;
+  background: #fff;
+}
+@media (min-width: 720px) { .card-index-row { grid-template-columns: 150px 1fr; align-items: start; } }
+.card-index-row .qr-badge svg { width: 132px; height: 132px; display: block; }
+.card-index-row .qr-badge .cap { display: block; max-width: 150px; overflow-wrap: anywhere; margin-top: 6px; }
+.card-index-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.card-index-head h3 { margin: 0; font-size: 19px; }
+.card-index-role { margin: 2px 0 10px; }
+.card-actions { margin-top: 12px; }
+
+/* the permanent URL, front and centre: this is what gets printed */
+.url-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 8px; }
+.url-value {
+  flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere;
+  background: rgba(20,20,30,.05); border: 1px solid var(--page-border);
+  border-radius: 9px; padding: 8px 10px; font-size: 13px;
+}
+
+.tier-card { border: 1px solid var(--page-border); border-radius: 12px; padding: 14px; background: rgba(20,20,30,.02); }
+.tier-card h3 { margin: 0 0 6px; font-size: 15px; }
+.tier-card p { margin: 0; }
+
+.badge-muted { background: rgba(20,20,30,.06); color: var(--page-muted); border-color: var(--page-border); }
+
+.site-foot { border-top: 1px solid var(--page-border); margin-top: 32px; padding: 18px 0 28px; }
+.site-foot p { margin: 0; }
+
+/* the generated /c/ directory page */
+.card-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+.card-row a {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; align-items: baseline;
+  border: 1px solid var(--page-border); border-radius: 12px; padding: 13px 15px;
+  text-decoration: none; color: inherit; background: #fff;
+}
+.card-row a:hover { border-color: var(--page-text); }
+.card-row-name { font-weight: 650; }
+.card-row-role { color: var(--page-muted); font-size: 13.5px; }
+.card-row-meta { grid-column: 1 / -1; color: var(--page-muted); font-size: 12.5px; display: flex; gap: 8px; align-items: center; }
+.pill { border-radius: 999px; padding: 1px 8px; font-size: 11.5px; border: 1px solid var(--page-border); }
+.pill-muted { background: rgba(20,20,30,.05); color: var(--page-muted); }

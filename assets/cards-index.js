@@ -1,0 +1,230 @@
+/*!
+ * assets/cards-index.js — renders the site root: every card on this deployment.
+ *
+ * Two jobs, both derived rather than configured:
+ *
+ *   1. List the profiles in profile-data/ with the permanent URL to print for
+ *      each one. The URL comes from Store.profileUrlFor(), which works out the
+ *      site root from where these scripts are being served, so a fork's cards
+ *      point at the fork without anyone editing a config file.
+ *   2. Recognise an untouched fork — the starter profile is still there — and
+ *      show the three-step setup panel instead of an empty page.
+ */
+(function () {
+  'use strict';
+
+  var Store = window.Store;
+  var Access = window.AccessRules;
+  var QR = window.QRCode;
+  var TPL = window.CardTemplates;
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      var value = attrs[key];
+      if (value == null) return;
+      if (key === 'class') node.className = value;
+      else if (key === 'text') node.textContent = String(value);
+      else if (key === 'html') node.innerHTML = String(value);
+      else if (key.slice(0, 2) === 'on') node.addEventListener(key.slice(2), value);
+      else node.setAttribute(key, value);
+    });
+    (children || []).forEach(function (child) {
+      if (!child) return;
+      node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+    });
+    return node;
+  }
+
+  /** Clipboard with a fallback: file:// and some browsers block the async API. */
+  function copy(text, button) {
+    function done(ok) {
+      if (!button) return;
+      var label = button.textContent;
+      button.textContent = ok ? 'Copied' : 'Press ⌘C';
+      button.disabled = true;
+      setTimeout(function () { button.textContent = label; button.disabled = false; }, 1400);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacy()); });
+    } else {
+      done(legacy());
+    }
+    function legacy() {
+      try {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(area);
+        return ok;
+      } catch (e) { return false; }
+    }
+  }
+
+  /** A scannable thumbnail of the permanent URL, sized so it stays readable. */
+  function qrThumb(url) {
+    var badge = el('div', { class: 'qr-badge' });
+    try {
+      var svg = QR.toSVG(url, { margin: 1, size: 132, light: '#ffffff', dark: '#16161d' });
+      badge.innerHTML = svg;
+    } catch (err) {
+      badge.appendChild(el('span', { class: 'tiny muted', text: 'QR unavailable' }));
+    }
+    badge.appendChild(el('span', { class: 'cap tiny muted', text: url }));
+    return badge;
+  }
+
+  function tierSummary(profile) {
+    var links = profile.links || [];
+    var pub = links.filter(function (l) { return l.visibility === 'public'; }).length;
+    var priv = links.length - pub;
+    var over = pub > Access.LIMITS.maxPublicLinks;
+    return el('p', { class: 'tiny ' + (over ? 'danger-text' : 'muted') }, [
+      document.createTextNode(pub + ' public' + (priv ? ' + ' + priv + ' private' : '')),
+      over ? document.createTextNode(' — over the free limit of ' + Access.LIMITS.maxPublicLinks) : null
+    ].filter(Boolean));
+  }
+
+  function cardRow(summary, profile) {
+    var url = summary.url || Store.profileUrlFor(summary.username, profile);
+    var name = summary.display_name || summary.username;
+    var starter = summary._starter || (profile && profile._starter);
+
+    var urlRow = el('div', { class: 'url-row' }, [
+      el('code', { class: 'url-value', text: url }),
+      el('button', {
+        class: 'btn btn-sm', type: 'button', text: 'Copy link',
+        onclick: function (ev) { copy(url, ev.currentTarget); }
+      }),
+      el('a', {
+        class: 'btn btn-sm btn-ghost', href: url, target: '_blank', rel: 'noopener', text: 'Open'
+      })
+    ]);
+
+    var actions = el('div', { class: 'btn-row card-actions' }, [
+      el('a', {
+        class: 'btn btn-sm btn-ghost',
+        href: 'dashboard/?u=' + encodeURIComponent(summary.username), text: 'Edit links'
+      }),
+      el('a', {
+        class: 'btn btn-sm btn-ghost',
+        href: 'card-builder/?u=' + encodeURIComponent(summary.username), text: 'Design card'
+      }),
+      el('a', {
+        class: 'btn btn-sm btn-ghost',
+        href: 'print/?u=' + encodeURIComponent(summary.username), text: 'Print sheet'
+      }),
+      el('a', {
+        class: 'btn btn-sm btn-ghost',
+        href: 'qr-generator/?url=' + encodeURIComponent(url), text: 'Bigger QR'
+      })
+    ]);
+
+    var body = el('div', { class: 'card-index-body' }, [
+      el('div', { class: 'card-index-head' }, [
+        el('h3', { text: name }),
+        starter ? el('span', { class: 'badge badge-muted', text: 'starter — edit me' }) : null
+      ].filter(Boolean)),
+      summary.designation ? el('p', { class: 'small muted card-index-role', text: summary.designation }) : null,
+      el('p', { class: 'tiny muted' }, [
+        document.createTextNode('Permanent URL — this is what the QR encodes, and it never changes:')
+      ]),
+      urlRow,
+      tierSummary(profile || {}),
+      actions
+    ].filter(Boolean));
+
+    return el('li', { class: 'card-index-row', 'data-username': summary.username }, [
+      qrThumb(url),
+      body
+    ]);
+  }
+
+  function renderEmpty(target) {
+    target.innerHTML = '';
+    target.appendChild(el('div', { class: 'empty-links' }, [
+      el('p', { text: 'No profiles yet.' }),
+      el('p', { class: 'small', html:
+        'Add a JSON file to <code>profile-data/</code>, named after the username you want in your URL, ' +
+        'then run <code>npm run build</code>. Or copy one of the ' +
+        '<a href="examples/">example profiles</a> and edit it.' }),
+      el('p', {}, [
+        el('a', { class: 'btn', href: 'dashboard/', text: 'Open the dashboard' })
+      ])
+    ]));
+  }
+
+  function start() {
+    var target = document.getElementById('cards');
+    var count = document.getElementById('card-count');
+    var firstRun = document.getElementById('first-run');
+    var limitEl = document.getElementById('limit-public');
+    if (limitEl) limitEl.textContent = String(Access.LIMITS.maxPublicLinks);
+
+    Store.listProfiles()
+      .then(function (summaries) {
+        if (!summaries.length) {
+          if (firstRun) firstRun.hidden = false;
+          if (count) count.textContent = '0 cards';
+          renderEmpty(target);
+          return;
+        }
+
+        // Load the full profiles so the counts and the starter flag are accurate.
+        return Promise.all(summaries.map(function (s) {
+          return Store.loadProfile(s.username).then(function (p) { return { summary: s, profile: p }; });
+        })).then(function (rows) {
+          var starterOnly = rows.every(function (r) {
+            return (r.summary._starter) || (r.profile && r.profile._starter);
+          });
+          if (firstRun) firstRun.hidden = !starterOnly;
+          if (count) {
+            count.textContent = rows.length + (rows.length === 1 ? ' card' : ' cards') +
+              ' · ' + Store.siteRoot();
+          }
+
+          target.innerHTML = '';
+          var list = el('ul', { class: 'card-index-list' });
+          rows.forEach(function (r) {
+            var checked = Access.validateProfile(r.profile || {});
+            var row = cardRow(r.summary, r.profile);
+            if (!checked.ok) {
+              row.appendChild(el('p', { class: 'tiny danger-text', text:
+                'This profile has problems: ' + checked.errors.slice(0, 3).join('; ') }));
+            }
+            list.appendChild(row);
+          });
+          target.appendChild(list);
+
+          target.appendChild(el('p', { class: 'tiny muted mt2', html:
+            'Every URL above is <code>' + escapeHtml(Store.siteRoot()) + 'c/&lt;username&gt;/</code>, derived ' +
+            'from where this site is served. Put it in a QR and print it — see ' +
+            '<a href="docs/PRINTING.md">PRINTING.md</a> for the card spec and ' +
+            '<a href="print/">the print sheet</a>.' }));
+        });
+      })
+      .catch(function (err) {
+        target.innerHTML = '';
+        target.appendChild(el('div', { class: 'notice notice-danger' }, [
+          el('strong', { text: 'Could not read your profiles.' }),
+          el('p', { class: 'small', text: String(err && err.message || err) }),
+          el('p', { class: 'small', html:
+            'This page fetches <code>profile-data/index.json</code>, so it needs to be served over http ' +
+            '(<code>python3 -m http.server</code>) rather than opened as a file. If you just added a ' +
+            'profile, run <code>npm run build</code> to refresh the index.' })
+        ]));
+      });
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+}());

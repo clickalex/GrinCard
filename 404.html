@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Link Card</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<!--
+  404.html — the reason a printed URL can be a clean /c/username/ on a static host.
+
+  GitHub Pages serves this file for any path that does not exist, and it keeps the
+  requested URL in the address bar. So instead of showing an error, we work out
+  which profile was asked for and boot the real renderer right here. The visitor
+  never sees a redirect, never sees a 404, and the URL they scanned stays on
+  screen — which matters because that URL is printed on a card.
+
+  Two things are derived rather than configured:
+
+    base      Where the site root is. 404.html is served from the repo root but
+              the browser resolves relative URLs against the REQUESTED path, so
+              we cannot know the depth in advance. We probe for a file that
+              always exists (lib/store.js) at increasing depths and use the first
+              hit. No repo name, no domain, no build step.
+
+    username  The segment after /c/ in the requested path.
+
+  tools/build-links.js also writes real stubs at deploy time, which are faster
+  (no probe) and work on hosts without a 404 fallback. This file is the net under
+  both: it makes branch deploys, deep paths and freshly added profiles work
+  before anyone regenerates anything.
+-->
+<body class="profile-page">
+
+<div class="wrap" id="fallback-note" hidden>
+  <p class="muted small">Looking up that link…</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var PROBE = 'lib/store.js';
+  var MAX_DEPTH = 6;
+  var note = document.getElementById('fallback-note');
+  if (note) note.hidden = false;
+
+  /** Which profile was requested? /repo/c/rahul/ -> "rahul" */
+  function usernameFromPath(pathname) {
+    var m = /\/c\/([^/?#]+)\/?/.exec(pathname || '');
+    if (!m) return '';
+    try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+  }
+
+  /**
+   * Find the site root by probing for a known file at increasing depths.
+   * Relative paths resolve against the requested URL, so "../../lib/store.js" is
+   * correct for a two-deep path like /repo/c/rahul/.
+   */
+  function findBase(done) {
+    var depth = 0;
+    function tryDepth() {
+      if (depth > MAX_DEPTH) { done('./'); return; }
+      var prefix = depth === 0 ? './' : '../'.repeat(depth);
+      var url = prefix + PROBE + '?probe=' + depth;
+      fetch(url, { method: 'GET', cache: 'force-cache' })
+        .then(function (res) {
+          var type = res.headers.get('content-type') || '';
+          // Some hosts answer every path with a 200 HTML page; require JS.
+          if (res.ok && /javascript|ecmascript/i.test(type)) done(prefix, depth);
+          else if (res.ok) {
+            return res.text().then(function (body) {
+              if (/QRCode|SiteRoot|Store/i.test(body.slice(0, 4000))) done(prefix, depth);
+              else { depth++; tryDepth(); }
+            });
+          } else { depth++; tryDepth(); }
+        })
+        .catch(function () { depth++; tryDepth(); });
+    }
+    tryDepth();
+  }
+
+  function inject(base, tag, attrs, onload) {
+    var el = document.createElement(tag);
+    Object.keys(attrs).forEach(function (k) {
+      if (attrs[k] != null) el.setAttribute(k, base + attrs[k]);
+    });
+    if (onload) el.onload = onload;
+    (tag === 'link' ? document.head : document.body).appendChild(el);
+    return el;
+  }
+
+  function bootApp(base, username) {
+    if (username) document.body.setAttribute('data-username', username);
+
+    inject(base, 'link', { rel: 'stylesheet', href: 'assets/styles.css' });
+
+    var scripts = ['lib/qr.js', 'card-templates/card-templates.js', 'lib/access.js',
+      'lib/store.js', 'profile/profile.js', 'profile/boot.js'];
+    // Load in order: each script registers a global the next one expects.
+    var i = 0;
+    (function next() {
+      if (i >= scripts.length) { if (note) note.hidden = true; return; }
+      inject(base, 'script', { src: scripts[i++] }, next);
+    }());
+  }
+
+  function notHere(base, pathname) {
+    if (note) note.hidden = true;
+    document.title = 'Not found — QR Link Card';
+    document.body.innerHTML = '';
+    document.body.className = '';
+    var wrap = document.createElement('div');
+    wrap.className = 'wrap narrow';
+    wrap.style.padding = '48px 20px';
+    wrap.innerHTML =
+      '<h1>Nothing at that address</h1>' +
+      '<p class="muted"><code>' + pathname.replace(/</g, '&lt;') + '</code> is not a page or a profile on this site.</p>' +
+      '<p><a class="btn" href="' + base + 'index.html">Go to the card index</a></p>';
+    document.body.appendChild(wrap);
+  }
+
+  findBase(function (base) {
+    var username = usernameFromPath(location.pathname);
+    if (username) {
+      bootApp(base, username);
+    } else {
+      // Not a /c/ path: a genuinely missing page. Still show something useful.
+      notHere(base, location.pathname);
+    }
+  });
+}());
+</script>
+</body>
+</html>

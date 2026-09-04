@@ -140,11 +140,170 @@
   var BY_ID = {};
   TEMPLATES.forEach(function (t) { BY_ID[t.id] = t; });
 
+  // ---------------------------------------------------------------------------
+  // Community templates (§ drop-in contributions)
+  //
+  // A contributed template is ONE file in card-templates/community/ plus one line
+  // in that folder's index.json. Nothing in this file changes, and no core file
+  // is touched by a pull request — which is the difference between a project
+  // people can contribute to and one they have to fork.
+  //
+  // Files are loaded at runtime because a static site cannot list a directory.
+  // tools/build-templates.js validates every file against the schema below and
+  // keeps index.json in sync; CI runs it in --check mode.
+  // ---------------------------------------------------------------------------
+
+  var COMMUNITY = [];
+  var COMMUNITY_LOADED = null;   // the in-flight (or finished) load promise
+
+  var LAYOUTS = ['photo-left', 'centered'];
+
+  /** The fields every template must have, and the ones that must not be missing. */
+  var REQUIRED_FRONT = ['background', 'accent', 'nameColor', 'roleColor', 'taglineColor',
+    'monogramBg', 'monogramColor', 'nameFont', 'nameWeight', 'nameSizePt', 'roleSizePt',
+    'taglineSizePt'];
+  var REQUIRED_BACK = ['background', 'accent', 'textColor', 'mutedColor', 'qrTile',
+    'captionSizePt', 'hintSizePt'];
+
+  /**
+   * Check a template object without throwing, so a bad contribution produces a
+   * readable list rather than a blank card.
+   * @returns {{ok: boolean, errors: string[], warnings: string[]}}
+   */
+  function validateTemplate(t) {
+    var errors = [];
+    var warnings = [];
+    if (!t || typeof t !== 'object') return { ok: false, errors: ['not an object'], warnings: warnings };
+
+    if (!t.id || !/^[a-z0-9][a-z0-9._-]*$/.test(t.id)) {
+      errors.push('id must be lowercase letters, digits, dot, dash or underscore');
+    } else if (BY_ID[t.id] && BY_ID[t.id] !== t) {
+      errors.push('id "' + t.id + '" is already taken');
+    }
+    if (!t.name) errors.push('name is required (shown in the picker and the gallery)');
+    if (LAYOUTS.indexOf(t.layout) < 0) {
+      errors.push('layout must be one of: ' + LAYOUTS.join(', ') + ' (got ' + JSON.stringify(t.layout) + ')');
+    }
+    ['front', 'back'].forEach(function (side) {
+      var block = t[side];
+      if (!block || typeof block !== 'object') { errors.push(side + ' is required'); return; }
+      var required = side === 'front' ? REQUIRED_FRONT : REQUIRED_BACK;
+      required.forEach(function (key) {
+        if (block[key] == null) errors.push(side + '.' + key + ' is required');
+      });
+      var bg = block.background;
+      if (bg) {
+        if (bg.type === 'solid' && !bg.color) errors.push(side + '.background.color is required for a solid');
+        if (bg.type === 'gradient' && (!bg.from || !bg.to)) {
+          errors.push(side + '.background needs from and to for a gradient');
+        }
+        if (['solid', 'gradient'].indexOf(bg.type) < 0) {
+          errors.push(side + '.background.type must be "solid" or "gradient"');
+        }
+      }
+    });
+
+    // The one rule that is not about taste: a QR needs contrast, and inverted
+    // codes fail on a large fraction of phone cameras. See docs/PRINTING.md.
+    if (t.back && t.back.qrTile && isLight(t.back.qrTile) === false) {
+      errors.push('back.qrTile must be a LIGHT colour — dark tiles make the QR unscannable ' +
+        'on many phone cameras (got ' + t.back.qrTile + ')');
+    }
+    if (t.front && t.front.photoShape && ['circle', 'round'].indexOf(t.front.photoShape) < 0) {
+      warnings.push('front.photoShape should be "circle" or "round"');
+    }
+    if (t.free === false) {
+      warnings.push('free: false is recorded but nothing is gated on it — the core is free');
+    }
+    if (!t.author) warnings.push('author is optional but appreciated (shown in the gallery)');
+
+    return { ok: errors.length === 0, errors: errors, warnings: warnings };
+  }
+
+  /**
+   * Add a template at runtime. Returns the registered template, or null if it was
+   * rejected — a bad contribution must never take the gallery down with it.
+   */
+  function register(t) {
+    var check = validateTemplate(t);
+    if (!check.ok) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('CardTemplates: rejected "' + (t && t.id) + '": ' + check.errors.join('; '));
+      }
+      return null;
+    }
+    if (BY_ID[t.id] === t) return t;   // already registered (idempotent)
+    t.community = true;
+    BY_ID[t.id] = t;
+    COMMUNITY.push(t);
+    return t;
+  }
+
+  /**
+   * Load every template listed in `<baseUrl>/index.json`, then let each file
+   * register itself. Resolves with the templates that were added; never rejects,
+   * because a missing or broken community folder must not break a card.
+   *
+   * @param {string} baseUrl e.g. "../card-templates/community/"
+   */
+  function loadCommunity(baseUrl) {
+    if (COMMUNITY_LOADED) return COMMUNITY_LOADED;
+    if (typeof fetch !== 'function' || typeof document === 'undefined') {
+      COMMUNITY_LOADED = Promise.resolve([]);
+      return COMMUNITY_LOADED;
+    }
+    var before = COMMUNITY.length;
+    COMMUNITY_LOADED = fetch(baseUrl + 'index.json', { cache: 'no-store' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .catch(function () { return null; })
+      .then(function (manifest) {
+        var files = (manifest && manifest.templates) || [];
+        // Load in order so a contributor's ordering choice is respected, and so
+        // two files racing to register cannot produce a nondeterministic picker.
+        return files.reduce(function (chain, entry) {
+          var file = typeof entry === 'string' ? entry : entry.file;
+          return chain.then(function () { return loadScript(baseUrl + file); });
+        }, Promise.resolve());
+      })
+      .then(function () { return COMMUNITY.slice(before); });
+    return COMMUNITY_LOADED;
+  }
+
+  /** Inject a <script> and resolve when it has run (or failed). */
+  function loadScript(src) {
+    return new Promise(function (resolve) {
+      var el = document.createElement('script');
+      el.src = src;
+      el.async = false;
+      el.onload = function () { resolve(true); };
+      el.onerror = function () {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('CardTemplates: could not load ' + src);
+        }
+        resolve(false);
+      };
+      document.head.appendChild(el);
+    });
+  }
+
+  /** Reset community state — used by tests and by the gallery's reload button. */
+  function resetCommunity() {
+    COMMUNITY.forEach(function (t) { delete BY_ID[t.id]; });
+    COMMUNITY = [];
+    COMMUNITY_LOADED = null;
+  }
+
   function get(id) {
     return BY_ID[id] || BY_ID['template-1'];
   }
 
-  function ids() { return TEMPLATES.map(function (t) { return t.id; }); }
+  /** Every template, core first then community in load order. */
+  function all() { return TEMPLATES.concat(COMMUNITY); }
+
+  function ids() { return all().map(function (t) { return t.id; }); }
+
+  /** Just the contributed ones. */
+  function community() { return COMMUNITY.slice(); }
 
   /**
    * Derive the on-screen CSS custom properties for a profile page from a
@@ -183,10 +342,17 @@
   return {
     GEOMETRY: GEOMETRY,
     TEMPLATES: TEMPLATES,
+    LAYOUTS: LAYOUTS,
     SANS: SANS,
     SERIF: SERIF,
     get: get,
+    all: all,
     ids: ids,
+    community: community,
+    register: register,
+    validateTemplate: validateTemplate,
+    loadCommunity: loadCommunity,
+    resetCommunity: resetCommunity,
     toCssVars: toCssVars,
     isLight: isLight
   };

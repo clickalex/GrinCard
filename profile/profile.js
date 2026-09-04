@@ -1,12 +1,17 @@
 /*!
- * profile.js — renders the public profile page (§8.1).
+ * profile.js — renders the public profile page: the thing a QR code opens.
  *
- * The URL is the API. Everything about what this page shows comes from three
- * inputs: the `u` parameter (whose profile), the `t` parameter (a temporary
- * token) and the viewer identity (an approved follower's session).
+ * The URL is the API. What this page shows comes from three inputs — whose
+ * profile, a temporary token, and the viewer identity — and `profile/boot.js`
+ * resolves the first of those from whichever host is running us:
  *
- * In production those inputs arrive as /c/:username, ?t=... and a session
- * cookie; the resolution logic in lib/access.js is identical either way.
+ *   /profile/?u=rahul   owner preview and ?u= deep links
+ *   /c/rahul/           the canonical printed URL (a generated stub)
+ *   /anything           404.html, which boots us in place rather than erroring
+ *
+ * Every link this page emits goes through Store.rootRelative(), which derives
+ * the climb back to the site root from the current path, so the same renderer
+ * works at any depth with no per-page configuration.
  */
 (function () {
   'use strict';
@@ -14,7 +19,13 @@
   var Access = window.AccessRules;
   var Store = window.Store;
   var TPL = window.CardTemplates;
-  var root = document.getElementById('profile-root');
+  var Boot = null;
+  var started = false;
+
+  /** Link to a site-root-relative path, from wherever this page is running. */
+  function link(path) { return Store.rootRelative(path); }
+
+  function root_() { return document.getElementById('profile-root'); }
 
   var ICONS = [
     [/instagram\.com/i, '📸'], [/wa\.me|whatsapp/i, '💬'], [/linkedin\.com/i, '💼'],
@@ -112,11 +123,17 @@
     return el('li', {}, [card]);
   }
 
+  /**
+   * The four-visitor switcher. It is a teaching aid, so it renders only in a demo
+   * context (a page pointed at examples/, or ?demo=1). On someone's real card it
+   * would be noise — and it would advertise that private links exist.
+   */
   function scenarioLinks(username, params, tokenInfo) {
     var base = location.pathname;
     function href(extra) {
       var q = new URLSearchParams();
       q.set('u', username);
+      q.set('demo', '1');
       Object.keys(extra || {}).forEach(function (k) { if (extra[k]) q.set(k, extra[k]); });
       return base + '?' + q.toString();
     }
@@ -146,28 +163,37 @@
         class: 'tiny muted',
         html: 'In V1 these links simulate the tiers in the browser. The private URLs are already in the JSON ' +
           'your browser fetched, so this demonstrates the UX, not real access control — see ' +
-          '<a href="../docs/ARCHITECTURE.md">ARCHITECTURE.md</a>.'
+          '<a href="' + link('docs/ARCHITECTURE.md') + '">ARCHITECTURE.md</a>.'
       })
     ]);
   }
 
   function notFound(username) {
+    var root = root_();
     root.innerHTML = '';
     root.appendChild(el('div', { class: 'profile-head' }, [
       el('div', { class: 'profile-monogram', text: '404' }),
       el('h1', { class: 'profile-name', text: 'No profile here' })
     ]));
+    var demo = Boot && Boot.demo;
     root.appendChild(el('div', { class: 'empty-links' }, [
       el('p', { text: 'There is no profile called “' + (username || '') + '”.' }),
       el('p', {
-        html: 'Try the demo: <a href="' + location.pathname + '?u=rahul123">rahul123</a> or ' +
-          '<a href="' + location.pathname + '?u=meera9">meera9</a>, or ' +
-          '<a href="../dashboard/">create your own</a>.'
-      })
+        html: demo
+          ? 'Try <a href="' + link('examples/') + '">the example profiles</a>, or ' +
+            '<a href="' + link('dashboard/') + '">create your own</a>.'
+          : '<a href="' + link('index.html') + '">See every card on this site</a>, or ' +
+            '<a href="' + link('card-builder/') + '">make one</a>.'
+      }),
+      el('p', { class: 'tiny muted', html:
+        'A profile is one JSON file in <code>profile-data/</code>, named after its ' +
+        '<code>username</code>. Run <code>npm run build</code> after adding one so the ' +
+        '<code>/c/' + (username || 'name') + '/</code> link and the index are generated.' })
     ]));
   }
 
   function render(profile, access, params) {
+    var root = root_();
     root.innerHTML = '';
     applyTheme(profile);
     document.title = profile.display_name + ' — QR Link Card';
@@ -203,26 +229,55 @@
         ' private. Ask ' + profile.display_name.split(' ')[0] + ' for a temporary link or for approval.' }));
     }
 
-    root.appendChild(scenarioLinks(profile.username, params, access.token));
+    if (Boot && Boot.demo) {
+      root.appendChild(scenarioLinks(profile.username, params, access.token));
+    }
+
+    // The canonical URL is derived, never typed: a fork's cards point at the fork.
+    var canonical = Store.profileUrlFor(profile.username, profile);
+    var existingCanonical = document.querySelector('link[rel="canonical"]');
+    if (existingCanonical) existingCanonical.setAttribute('href', canonical);
+    else {
+      var tag = document.createElement('link');
+      tag.rel = 'canonical';
+      tag.href = canonical;
+      document.head.appendChild(tag);
+    }
 
     root.appendChild(el('footer', { class: 'profile-foot no-print' }, [
       el('p', {
-        html: 'Powered by <a href="../index.html">QR Link Card</a> — free and open source (MIT).'
+        html: 'Powered by <a href="' + link('index.html') + '">QR Link Card</a> — free and open source (MIT).'
       }),
       el('p', { class: 'tiny', html:
         'This URL never changes. Edit the links and every printed card updates itself.' })
     ]));
   }
 
-  function boot() {
-    var params = qs();
-    var username = (params.u || params.username || '').trim();
+  function boot(api) {
+    if (started) return;
+    started = true;
+    Boot = api || window.ProfileBoot || null;
+
+    var params = Boot ? Boot.params : qs();
+    var username = Boot ? Boot.username : (params.u || params.username || '').trim();
 
     if (!username) {
-      // No ?u= — fall back to whatever was edited most recently in this browser,
-      // then to the demo profile so the page is never blank.
-      username = Store.getLastUsername() || 'rahul123';
+      // Nothing in the URL: fall back to whoever was edited most recently in this
+      // browser, then to the first profile this deployment actually has.
+      username = Store.getLastUsername() || '';
     }
+    if (!username) {
+      Store.listProfiles().then(function (list) {
+        var first = list.filter(function (p) { return !p._starter; })[0] || list[0];
+        if (first) boot2(first.username, params);
+        else notFound('');
+      }).catch(function () { notFound(''); });
+      return;
+    }
+    boot2(username, params);
+  }
+
+  function boot2(username, params) {
 
     // `?viewer=` stands in for a session cookie so the follower tier is
     // demonstrable without a backend. The dashboard sets the same key.
@@ -240,6 +295,7 @@
         render(checked.ok ? checked.profile : profile, access, params);
       })
       .catch(function (err) {
+        var root = root_();
         root.innerHTML = '';
         root.appendChild(el('div', { class: 'notice notice-danger' }, [
           el('div', {}, [
@@ -254,6 +310,14 @@
       });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  // boot.js calls this once it has resolved the username and built the chrome.
+  window.ProfileRender = boot;
+
+  // If a host page loads this without boot.js, self-start: `?u=` is enough.
+  function selfStart() {
+    if (started || window.ProfileBoot) return;
+    boot(null);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', selfStart);
+  else setTimeout(selfStart, 0);
 })();

@@ -25,6 +25,22 @@ Thumbs.db
 .test-tmp-*/
 profile-data/*.local.json
 
+# The GitHub Actions workflows are NOT ignored because they are unimportant — they are
+# ignored because they cannot be pushed from here. A GitHub App installation token
+# without the `workflows` permission is refused outright:
+#
+#   ! [remote rejected] (refusing to allow a GitHub App to create or update workflow
+#     `.github/workflows/ci.yml` without `workflows` permission)
+#
+# The canonical copies live in tools/github-workflows/ (tracked, pushable) and are put
+# in place by `npm run workflows:install`. Ignoring the destination keeps a plain
+# `git add -A` from staging files whose push will be rejected.
+#
+# If you have the `workflows` permission on your own fork, enable CI with:
+#   npm run workflows:install && git add -f .github/workflows && git commit
+# See tools/github-workflows/README.md.
+/.github/workflows/
+
 # Generated per-username stubs (`npm run build`, and the Pages workflow on every
 # push). Derived from profile-data/, so committing them would leave a stale URL
 # behind when someone renames a profile. 404.html boots the same renderer for any

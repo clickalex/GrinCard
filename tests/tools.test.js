@@ -365,6 +365,64 @@ test('check-links ignores markup built inside JavaScript', () => {
   assert.equal(stripped.split('\n').length, html.split('\n').length, 'line numbers are preserved');
 });
 
+test('install-workflows copies the canonical workflows, and detects drift', () => {
+  // GitHub only runs workflows from .github/workflows/, but an app token without the
+  // `workflows` permission cannot write there — the push is rejected outright. So the
+  // canonical copies live under tools/github-workflows/ and are installed by script.
+  // That indirection is only safe if something verifies the two agree.
+  const iw = require('../tools/install-workflows.js');
+  const files = iw.workflowFiles();
+  assert.deepEqual(files, ['ci.yml', 'pages.yml'], 'expected exactly the two workflows');
+
+  files.forEach((f) => {
+    const canonical = fs.readFileSync(path.join(iw.SRC, f), 'utf8');
+    assert.ok(canonical.length > 200, f + ' looks truncated');
+    assert.match(canonical, /^name:/m, f + ' must name its workflow');
+    assert.match(canonical, /on:/, f + ' must declare a trigger');
+  });
+
+  // The canonical copies must reference scripts that exist, or CI fails on a step
+  // that no longer does anything.
+  const ci = fs.readFileSync(path.join(iw.SRC, 'ci.yml'), 'utf8');
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.ok(ci.includes('npm run validate'), 'CI must run validate');
+  assert.ok(ci.includes('npm test'), 'CI must run the tests');
+  assert.ok(ci.includes('install-workflows.js --check'), 'CI must guard against workflow drift');
+  assert.ok(pkg.scripts.validate && pkg.scripts.test, 'the scripts CI calls must be defined');
+  assert.equal(pkg.scripts['workflows:install'], 'node tools/install-workflows.js');
+  assert.equal(pkg.scripts['workflows:check'], 'node tools/install-workflows.js --check');
+
+  // --check must pass when the installed copies agree, and fail when they do not.
+  assert.equal(iw.main(['--check']), 0, 'installed workflows should match the canonical ones');
+
+  const installedCi = path.join(iw.DEST, 'ci.yml');
+  if (fs.existsSync(installedCi)) {
+    const original = fs.readFileSync(installedCi, 'utf8');
+    try {
+      fs.writeFileSync(installedCi, original + '\n# deliberate drift\n');
+      assert.equal(iw.main(['--check']), 1, 'drift must be detected');
+      assert.equal(iw.main(['--force']), 0, '--force must repair it');
+      assert.equal(fs.readFileSync(installedCi, 'utf8'), original, 'repaired byte for byte');
+    } finally {
+      fs.writeFileSync(installedCi, original);
+    }
+  }
+
+  // And a missing workflow is reported, not silently skipped.
+  const installedPages = path.join(iw.DEST, 'pages.yml');
+  if (fs.existsSync(installedPages)) {
+    const original = fs.readFileSync(installedPages, 'utf8');
+    try {
+      fs.rmSync(installedPages);
+      assert.equal(iw.main(['--check']), 1, 'a missing workflow must fail --check');
+      assert.equal(iw.main([]), 0, 'a plain run must reinstall it');
+      assert.equal(fs.readFileSync(installedPages, 'utf8'), original);
+    } finally {
+      if (!fs.existsSync(installedPages)) fs.writeFileSync(installedPages, original);
+    }
+  }
+});
+
 test('check-links reads markdown links, and ignores the ones inside code fences', () => {
   // Docs are the most-edited surface in a template repository: a fork renames
   // things, and a guide that links to a moved file is as broken as a dead button.

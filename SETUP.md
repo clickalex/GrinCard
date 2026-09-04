@@ -83,15 +83,31 @@ the same data, preview live, and export the JSON file to commit.
 
 ### Recommended — deploy with the included workflow
 
-`.github/workflows/pages.yml` regenerates your links on every push and publishes the result.
+Two workflows ship with this repository: `pages.yml` regenerates your links on every push and
+publishes the result, and `ci.yml` validates profiles, templates and internal links.
 
-1. Push your fork to GitHub.
-2. **Settings → Pages → Build and deployment → Source → GitHub Actions.**
+**They are not in `.github/workflows/` when you clone.** GitHub refuses to let an app token
+without the `workflows` permission create files there, so the canonical copies live in
+`tools/github-workflows/` and you install them once. On your own fork you have the permission:
+
+```bash
+npm run workflows:install
+git add -f .github/workflows
+git commit -m "Enable CI and Pages workflows"
+git push
+```
+
+Then:
+
+1. **Settings → Pages → Build and deployment → Source → GitHub Actions.**
    (The workflow tries to enable this for you on the first run, but the setting is yours to
    confirm.)
-3. Push to `main`. Watch the **Deploy to GitHub Pages** run.
-4. Your site is at `https://<you>.github.io/<repo>/`, and your card is at
+2. Push to `main`. Watch the **Deploy to GitHub Pages** run.
+3. Your site is at `https://<you>.github.io/<repo>/`, and your card is at
    `https://<you>.github.io/<repo>/c/<username>/`.
+
+See [tools/github-workflows/README.md](tools/github-workflows/README.md) for what each step
+checks, and why the workflows live where they do.
 
 The workflow runs `npm run build` before uploading, so the `/c/<username>/` stubs exist even
 though they are gitignored, and development-only files (`tests/`, `tools/`) are removed from
@@ -142,7 +158,8 @@ the same renderer, so `/c/<username>/` works before you have run anything, on ho
 Actions, and for a profile you added but forgot to build.
 
 **Add a profile and forget the build?** Your `/c/<username>/` link still works (via
-`404.html`); only the index listing lags. CI fails on a stale manifest so you find out.
+`404.html`); only the index listing lags. `npm run validate` fails on a stale manifest, so you
+find out before your visitors do.
 
 ---
 
@@ -270,7 +287,9 @@ compare our output against independent implementations (`qrcode`, `jsQR`, `pdfjs
 `@napi-rs/canvas`, `jsdom`). Those are dev-only oracles, not project dependencies. Install them
 to run everything; [CONTRIBUTING.md](CONTRIBUTING.md#the-dev-only-oracles) has the commands.
 
-CI runs the full set on every push — see `.github/workflows/ci.yml`.
+Once you have installed the workflows (see [§3](#3-on-github-pages)), `ci.yml` runs the full set
+on every push. Until then, `npm run validate && node tools/check-links.js && npm test` is exactly
+what it would have run.
 
 ---
 

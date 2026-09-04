@@ -7,9 +7,9 @@ and see it in a browser in five seconds.
 There are two very different kinds of contribution, and the difference is deliberate:
 
 - **[A card template](#contributing-a-card-template)** — one new file in
-  `card-templates/community/`, no core changes, validated by CI. Designs are a matter of taste
-  and taste does not need a maintainer's approval to exist, so this path is as frictionless as
-  we can make it. Start with [docs/TEMPLATES.md](docs/TEMPLATES.md).
+  `card-templates/community/`, no core changes, validated by `npm run validate`. Designs are a
+  matter of taste and taste does not need a maintainer's approval to exist, so this path is as
+  frictionless as we can make it. Start with [docs/TEMPLATES.md](docs/TEMPLATES.md).
 - **[A change to the core](#adding-a-feature)** — the encoder, the access rules, the card
   geometry, the tools, the tests. Read the rest of this file first.
 
@@ -167,14 +167,27 @@ that matters.
 - A new access rule → `tests/access.test.js`. Cover every tier transition and every failure
   reason; the existing tests are a good shape to copy.
 - A new template → nothing, and that is intentional. `tools/build-templates.js` validates it
-  against the schema in CI (including the "QR tile must be light" rule), and `templates/` renders
+  against the schema (including the "QR tile must be light" rule), and `templates/` renders
   every registered template twice per side — once normal, once with a 28-character name — so
   layout regressions are visible by eye. If your template does something *structural*, add a
   `tests/card.test.js` case. See [docs/TEMPLATES.md](docs/TEMPLATES.md).
 - A new tool in `tools/` → a `tests/tools.test.js` case that runs it against a fixture directory
   and asserts on the files it wrote, including that a second run changes nothing.
-- A new generated file → make `npm run validate` check it. CI fails on a stale manifest, which
-  is the only thing standing between a contributor and a silently missing profile.
+- A new generated file → make `npm run validate` check it. A stale manifest is the only thing
+  standing between a contributor and a silently missing profile.
+
+### One thing to know about CI in this repository
+
+Everything above is enforced by `ci.yml`, but that workflow is **not in `.github/workflows/` when
+you clone** — GitHub rejects workflow files pushed by an app token without the `workflows`
+permission. The canonical copies live in `tools/github-workflows/`; `npm run workflows:install`
+puts them in place, and `ci.yml` then runs `install-workflows.js --check` on every push so the two
+cannot drift apart.
+
+Until someone with that permission installs and commits them, CI does not run, and **`npm run
+validate && node tools/check-links.js && npm test` is the check**. Run it locally before opening a
+pull request; it is exactly what CI would have run. See
+[tools/github-workflows/README.md](tools/github-workflows/README.md).
 - A new page → add it to the page/script pairs in `tests/dom.test.js`. Two static checks run
   automatically over every HTML file: no reference to a missing local file, and no CDN or
   dependency mention. They will fail your PR if you add a `<script src="https://…">`.

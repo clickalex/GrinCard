@@ -112,7 +112,7 @@ Same shape, plus the one field that decides whether the card works at all:
 
 ## 4. The rules that are not about taste
 
-`CardTemplates.validateTemplate()` enforces these, and CI fails the build on any of
+`CardTemplates.validateTemplate()` enforces these, and `npm run validate` fails the build on any of
 them. They exist because a template that violates them produces a card that looks
 fine on screen and fails in someone's hand.
 

@@ -147,7 +147,7 @@ Two minutes now saves a reprint.
    should still scan. This is what ECL Q is for, and it is why it is the default for the back
    of a card that will live in a wallet.
 
-Automated versions of checks 1 and 7 already run in CI: `tests/card.test.js` renders the
+Automated versions of checks 1 and 7 already run in the test suite: `tests/card.test.js` renders the
 generated PDF at 300 DPI with `pdfjs-dist` and decodes the pixels with `jsQR`, asserting the
 result equals the exact profile URL. `tests/generator.test.js` does the same for A4 sheets.
 

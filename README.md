@@ -100,8 +100,8 @@ a day. When it expires, visitors fall back to the public view instead of hitting
 for stickers, table tents, event badges, or a wall of links in a shop.
 
 **Contributed card templates** — a template is one self-registering file in
-`card-templates/community/`, validated in CI and rendered in the gallery beside the
-built-ins. No core file changes, so designs do not have to be reconciled against each other.
+`card-templates/community/`, validated by `npm run validate` and rendered in the gallery beside
+the built-ins. No core file changes, so designs do not have to be reconciled against each other.
 See [docs/TEMPLATES.md](docs/TEMPLATES.md).
 
 **No paywalls in the core** — the tier limits (5 public links, 1 active temporary link) are
@@ -144,11 +144,18 @@ card-templates/
 tools/
   build-links.js               profile-data/ -> manifests + /c/<username>/ stubs
   build-templates.js           validate contributions, keep the manifest in sync
-  check-links.js               every internal link resolves (CI)
-tests/                         node --test: encoder, card, rules, generator, DOM
-.github/workflows/             ci.yml (tests, links, generated files) + pages.yml (deploy)
+  check-links.js               every internal link resolves, in pages and in docs
+  install-workflows.js         copy the workflows into .github/workflows/
+  github-workflows/            ci.yml (tests, links, generated files) + pages.yml (deploy)
+tests/                         node --test: encoder, card, rules, generator, DOM, tools
 docs/                          ARCHITECTURE, API, PRINTING, CUSTOMIZATION, TEMPLATES
 ```
+
+The workflows live under `tools/` rather than `.github/workflows/` because GitHub refuses to let
+an app token without the `workflows` permission create files there — the push is rejected, not
+warned about. `npm run workflows:install` puts them where GitHub looks, and `ci.yml` then verifies
+the two copies agree on every run. On your own fork you have the permission; see
+[tools/github-workflows/README.md](tools/github-workflows/README.md).
 
 The important decision is in `lib/card.js`: a card is built **once** into a display list of
 millimetre-based drawing commands, and both the on-screen SVG preview and the print PDF are
@@ -181,10 +188,11 @@ deep, with no configuration — which is what makes this safe to fork.
 
 Two kinds of contribution, deliberately different in effort:
 
-**A template** — one file, no core changes, validated by CI. This is the contribution the
-project is built to accept, because designs are a matter of taste and taste does not need a
-maintainer's approval to exist. Copy `card-templates/community/sunset.js`, edit it, run
-`npm run build:templates`, open a pull request. See [docs/TEMPLATES.md](docs/TEMPLATES.md).
+**A template** — one file, no core changes, validated by the same rules the tools enforce. This
+is the contribution the project is built to accept, because designs are a matter of taste and
+taste does not need a maintainer's approval to exist. Copy
+`card-templates/community/sunset.js`, edit it, run `npm run build:templates`, open a pull
+request. See [docs/TEMPLATES.md](docs/TEMPLATES.md).
 
 **A change to the core** — the encoder, the access rules, the card geometry, the tests. Read
 [CONTRIBUTING.md](CONTRIBUTING.md) first; the QR and PDF code is verified against independent

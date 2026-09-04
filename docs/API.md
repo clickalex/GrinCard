@@ -195,7 +195,8 @@ no fetch, no manifest, or a broken file — a missing community folder must not 
 it before rendering anything that reads a template, which is what `profile/boot.js`,
 `card-builder/builder.js`, `templates/gallery.js` and `print/print-sheet.js` all do.
 
-`validateTemplate()` is the same check `tools/build-templates.js` runs in CI. It returns errors
+`validateTemplate()` is the same check `tools/build-templates.js` runs under `npm run validate`.
+It returns errors
 for anything that would produce a broken or unscannable card, and warnings for advice:
 
 | Rule | Level | Why |

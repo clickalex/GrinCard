@@ -11,15 +11,20 @@ The smallest change and the one everybody makes first. Either:
 
 - Open **[card-builder/](../card-builder/index.html)**, fill it in, and click **Download
   profile JSON**; or
-- `cp profile-data/demo-template.json profile-data/yourname.json` and edit it.
+- rename `profile-data/yourname.json` to `profile-data/<your-username>.json` and edit it.
 
-The filename must equal the `username` field inside it. Every field is documented in
+The filename must equal the `username` field inside it, and it is what your printed address
+becomes: `profile-data/riley.json` → `https://<your-site>/c/riley/`. Then run `npm run build`
+so the manifests and the `/c/riley/` page are regenerated. Every field is documented in
 [docs/API.md#data-schemas](API.md#data-schemas).
 
-The field people forget is **`profile_url`** — it is what the QR code on the back of your card
-encodes. If you leave it out, the back of the card says *"Set a profile URL to generate the QR
-code"* instead of drawing a code, which is deliberate: a card that encodes nothing is worse
-than a card that tells you why.
+**You never type your URL.** The `profile_url` field is derived from where the page is actually
+served, so a fork's cards point at the fork, a move to a custom domain changes nothing, and a
+project page served from `/<repo>/` works the same as one served from `/`. The dashboard shows it
+read-only so you can see what you are about to print. The only reason to set `profile_url`
+yourself is a domain you own that is not where the site is served — it must then be **absolute**
+(`https://cards.example.com/c/riley/`), because a relative one is ignored. Leaving it out is the
+normal case and nothing warns you about it.
 
 **Photo.** Three options, best first:
 
@@ -105,7 +110,7 @@ var GEOMETRY = {
 
 Change it and the card renderer, the SVG preview, the print PDF, the print sheet and the
 dashboard's stated dimensions all follow — they all read this object, none of them hardcode a
-number. `demo/print-sheet.html` re-renders at true millimetre size, so you can measure the
+number. `print/` re-renders at true millimetre size, so you can measure the
 result with a ruler.
 
 Things worth knowing before you change it:
@@ -128,9 +133,49 @@ Things worth knowing before you change it:
 
 A template is data. If it reuses an existing layout, you do not write any renderer code.
 
-### The easy case: a new colour scheme
+There are two ways to add one, and they are not the same thing:
 
-Append an object to `TEMPLATES` in `card-templates/card-templates.js`:
+- **For your own site** — drop a file into `card-templates/community/` and run
+  `npm run validate`. It appears in every picker. Nothing in `card-templates.js` changes.
+- **As a contribution to this project** — the same file, plus a pull request. See
+  [CONTRIBUTING.md](../CONTRIBUTING.md) and the authoring guide in
+  [docs/TEMPLATES.md](TEMPLATES.md).
+
+### The drop-in path (what you want for your own cards)
+
+Create `card-templates/community/<name>.js`:
+
+```js
+CardTemplates.register({
+  id: 'my-forest',
+  name: 'Forest',
+  description: 'Deep green, cream type.',
+  layout: 'photo-left',
+  author: { name: 'You' },
+  front: { /* every field in the table below */ },
+  back:  { /* … */ }
+});
+```
+
+`register()` returns the template, or `null` with a console warning explaining exactly what to
+fix — it never throws, so a typo in your own template cannot break your cards. Then run
+`node tools/build-templates.js` to refresh the manifest.
+
+The rules, because `npm run validate` and `CardTemplates.validateTemplate()` enforce the same
+ones:
+
+- `id` must be **unique across core and community**. Shadowing a built-in id would silently
+  change cards somebody already printed, so it is rejected.
+- `layout` must be `photo-left` or `centered`.
+- Every `front.*` and `back.*` colour and size field must be present — the display list has no
+  defaults to fall back on.
+- `back.qrTile` must be **light**. An inverted QR code fails to scan on a large fraction of phone
+  cameras, which is a broken card rather than an ugly one.
+
+### The easy case: adding to the core registry
+
+If you are changing this project's built-ins rather than adding your own, append an object to
+`TEMPLATES` in `card-templates/card-templates.js`:
 
 ```js
 {
@@ -173,7 +218,7 @@ Append an object to `TEMPLATES` in `card-templates/card-templates.js`:
 ```
 
 That is the whole change. The template picker in the builder, the dashboard and
-`demo/card-preview.html` are all generated from `TEMPLATES`, so it appears everywhere
+`templates/` are all generated from `TEMPLATES`, so it appears everywhere
 immediately, with a live preview on both sides.
 
 **Keep `qrTile` light and the QR modules dark.** QR readers look for contrast; an inverted code
@@ -224,7 +269,7 @@ Rules that keep the output printable:
   `PdfCard.generate`. If you draw something directly you have created a preview/print mismatch,
   which is exactly the bug this architecture exists to prevent. Supported item types are listed
   in [docs/API.md#card](API.md#card).
-- **Test it.** `demo/card-preview.html` renders every template twice per side — once with a
+- **Test it.** `templates/` renders every template twice per side — once with a
   normal profile and once with deliberately over-long text — so a new template's overflow
   problems are visible immediately, without writing a test.
 
@@ -232,12 +277,12 @@ Rules that keep the output printable:
 
 ## 6. The web page
 
-`demo/assets/styles.css` is the whole theme. It reads the CSS custom properties set by
+`assets/styles.css` is the whole theme. It reads the CSS custom properties set by
 `CardTemplates.toCssVars`, so most visual changes need no CSS at all — change the template.
 
 Structural changes:
 
-- **The link list** is rendered by `demo/assets/profile.js` into `.link-card` elements. Each has
+- **The link list** is rendered by `assets/profile.js` into `.link-card` elements. Each has
   a label, the URL, a visibility flag and an icon. Reorder the markup, restyle with CSS; the
   behaviour (external links open in a new tab with `rel="noopener"`) is set in JS and is worth
   keeping.
@@ -247,7 +292,7 @@ Structural changes:
 - **Print rules** are at the bottom of the stylesheet (`@media print`). The profile page is not
   meant to be printed, but the print sheet is, and it hides every piece of chrome.
 
-`demo/profile.html` is the page a QR code opens. Keep it fast: one JSON fetch, no framework, no
+`profile/` is the page a QR code opens. Keep it fast: one JSON fetch, no framework, no
 web font, no third-party script. A stranger scanning your card is often on mobile data outside a
 venue, and every 100 ms is a chance they give up.
 
@@ -255,14 +300,31 @@ venue, and every 100 ms is a chance they give up.
 
 ## 7. URL structure
 
-The canonical form in the design is `/c/username`. The shipped form is
-`/demo/profile.html?u=username`, because static hosting cannot rewrite URLs without a config
-file. Both are supported today and switching is documented, with copy-paste configs for GitHub
-Pages, Netlify, Nginx and Apache, in
-[SETUP.md §3](../SETUP.md#3-clean-cusername-urls-recommended-for-real-cards).
+The permanent address a card prints is `/c/<username>/`. It is a **real file**, generated by
+`tools/build-links.js`, so it works on plain GitHub Pages with no rewrite rules, no build step,
+and no server configuration:
 
-Whichever you use, set `profile_url` in the profile JSON to the **public, absolute** URL. That
-value is what gets encoded, so it is also what you cannot change later without reprinting.
+```
+profile-data/riley.json   ──npm run build──▶   c/riley/index.html   (a ~14-line stub)
+                                              c/index.html         (a directory of your cards)
+```
+
+The stub runs the same renderer as `profile/`, so there is one implementation and one set of
+tests for both. `404.html` boots that renderer for any path, which is why the URLs also work on
+a deployment that skipped the build.
+
+`profile/?u=<username>` still works and is what every tool links to when you are editing. The
+difference is that `/c/` is what gets printed, because it is the URL a stranger types and the one
+that survives moving hosts.
+
+### Nothing about this is configured
+
+The deployment root is derived at runtime from the page's own location (`Store.siteRoot()`), and
+the address encoded in a QR is `Store.profileUrlFor(username)` — see
+[docs/ARCHITECTURE.md §4b](ARCHITECTURE.md#4b-nothing-knows-where-it-is-deployed). Rename the
+repository, deploy to Netlify, put it behind a custom domain: the cards follow, and you change no
+file. That is deliberate — the one thing you cannot fix after printing is a QR code pointing at
+the wrong website.
 
 Also supported in the URL:
 
@@ -271,8 +333,21 @@ Also supported in the URL:
 | `?u=rahul123` | Which profile to show |
 | `?t=temp_abc123` | A temporary-access token |
 | `?viewer=user_priya` | Simulate being an approved follower (V1 demo only; V2 uses a session) |
+| `?demo=1` | Show the tier switcher, and make the URL safe to publish |
 
-The three combine, and precedence is follower → token → public.
+The first three combine, and precedence is follower → token → public.
+
+`?demo=1` is only ever set on fixture URLs, where every link is fake and public. On a real
+profile the switcher never renders: publishing `/profile/?viewer=user_priya` would be publishing
+a way to see your followers-only links, and this project's whole premise is that a URL you hand
+out is not a URL you can take back.
+
+### Moving hosts, and the one override
+
+Because the URL is derived, moving hosts needs no code change — but **it does mean reprinting**,
+since the address on an existing card stops resolving. If you want a card to survive the move,
+print a domain you own and point it at the deployment. That is the only reason to set
+`profile_url` (or `<body data-site-root>`) by hand, and it must be absolute.
 
 ---
 

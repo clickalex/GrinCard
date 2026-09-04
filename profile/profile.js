@@ -313,11 +313,22 @@
   // boot.js calls this once it has resolved the username and built the chrome.
   window.ProfileRender = boot;
 
-  // If a host page loads this without boot.js, self-start: `?u=` is enough.
+  /**
+   * Fallback for a host page that loads this WITHOUT boot.js: `?u=` is enough.
+   *
+   * The deferred call matters. boot.js is loaded after this file, so its
+   * DOMContentLoaded listener is registered second and runs second. Starting
+   * synchronously here would win that race with no username in hand and fall back
+   * to whichever profile happens to be first in the manifest — rendering the wrong
+   * person, silently. One turn of the event loop is enough for boot.js to publish
+   * window.ProfileBoot, after which this does nothing.
+   */
   function selfStart() {
-    if (started || window.ProfileBoot) return;
-    boot(null);
+    setTimeout(function () {
+      if (started || window.ProfileBoot) return;
+      boot(null);
+    }, 0);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', selfStart);
-  else setTimeout(selfStart, 0);
+  else selfStart();
 })();

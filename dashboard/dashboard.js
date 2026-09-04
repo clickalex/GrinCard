@@ -95,9 +95,16 @@
   // Loading and saving
   // ---------------------------------------------------------------------------
 
-  function defaultProfileUrl(username) {
-    return location.origin + Store.pageRelative('../demo/profile.html') +
-      '?u=' + encodeURIComponent(username || 'yourname');
+  /**
+   * The permanent URL for a profile: derived, never typed.
+   *
+   * Store.profileUrlFor() builds <site root>/c/<username>/ from the URL this script
+   * was served from, so the same code produces the right link on a fork, on a
+   * custom domain, and in a subdirectory — and an explicit absolute profile_url in
+   * the JSON still wins, which is how someone points a card at their own domain.
+   */
+  function defaultProfileUrl(username, profile) {
+    return Store.profileUrlFor(username || (state.profile && state.profile.username), profile);
   }
 
   function blankProfile() {
@@ -128,9 +135,9 @@
           profile = blankProfile();
           profile.username = target === 'rahul123' ? '' : target;
           alert('warn', 'No saved profile for <strong>' + escapeHtml(target) +
-            '</strong> — starting a fresh one. Nothing is lost; the demo profile is still available.');
+            '</strong> — starting a fresh one. Nothing is lost; your other profiles are still there.');
         }
-        if (!profile.profile_url) profile.profile_url = defaultProfileUrl(profile.username);
+        // profile_url stays empty unless the JSON set an override: the URL is derived.
         if (!profile.card_settings) profile.card_settings = { template_id: 'template-1', show_photo: true };
         state.profile = profile;
         state.saved = JSON.stringify(strip(profile));
@@ -162,7 +169,7 @@
     p.display_name = $('f-name').value.trim();
     p.designation = $('f-role').value.trim();
     p.tagline = $('f-tagline').value.trim();
-    p.profile_url = $('f-profile-url').value.trim();
+    p.profile_url = ($('f-profile-url-override').value || '').trim();
     p.card_settings.show_photo = $('f-show-photo').checked;
     return p;
   }
@@ -171,7 +178,7 @@
     readForm();
     var p = state.profile;
     if (!p.username) { alert('danger', 'Pick a username first — it is your permanent URL.', 0); return; }
-    if (!p.profile_url) p.profile_url = defaultProfileUrl(p.username);
+    // No override needed — defaultProfileUrl() derives it at render time.
 
     var result = Store.saveProfile(p);
     if (!result.ok) {
@@ -216,7 +223,12 @@
     $('f-name').value = p.display_name || '';
     $('f-role').value = p.designation || '';
     $('f-tagline').value = p.tagline || '';
-    $('f-profile-url').value = p.profile_url || '';
+    var derived = defaultProfileUrl(p.username, p);
+    $('f-profile-url').value = derived;
+    $('btn-open-url').href = derived;
+    // Show an override only if one was actually set, so the field stays empty by default.
+    $('f-profile-url-override').value =
+      (p.profile_url && /^[a-z][a-z0-9+.-]*:\/\//i.test(p.profile_url)) ? p.profile_url : '';
     $('f-show-photo').checked = p.card_settings.show_photo !== false;
     $('username-prefix').textContent = '/c/';
 
@@ -466,7 +478,7 @@
   function openPrintSheet() {
     if (!state.profile.username) { alert('warn', 'Save a username first.'); return; }
     save().then(function () {
-      window.open('../demo/print-sheet.html?u=' + encodeURIComponent(state.profile.username), '_blank');
+      window.open('../print/?u=' + encodeURIComponent(state.profile.username), '_blank');
     });
   }
 
@@ -478,7 +490,8 @@
     var box = $('visitor-links');
     clear(box);
     var registry = state.registry || { tokens: [], followers: [] };
-    var profilePage = Store.pageRelative('../demo/profile.html');
+    // Scenarios are built on the canonical /c/<username>/ URL, the one that gets printed.
+    var profilePage = Store.rootRelative('c/' + encodeURIComponent(profile.username) + '/');
 
     var liveToken = (registry.tokens || []).filter(function (t) {
       return !t.expires_at || Date.parse(t.expires_at) > Date.now();
@@ -663,7 +676,7 @@
     var remote = state.registry._remoteTokens || [];
     if (remote.length) {
       box.appendChild(el('div', { class: 'demo-tokens mt2' }, [
-        el('h3', { class: 'sub-head', text: 'Demo tokens from profile-data/tokens.json' }),
+        el('h3', { class: 'sub-head', text: 'Tokens committed in profile-data/tokens.json' }),
         el('p', { class: 'tiny muted', html:
           'Shipped with the repo so the docs and the demo links always work. They are read-only at ' +
           'runtime — edit the JSON file to change them. In V2 these rows live in your database and ' +
@@ -812,7 +825,7 @@
     Exporter.download(new Blob([profileJson() + '\n'], { type: 'application/json' }),
       username + '.json');
     alert('ok', 'Saved as <code>' + escapeHtml(username) + '.json</code>. Drop it into ' +
-      '<code>profile-data/</code> to self-host it, then your URL works with no server code at all.');
+      '<code>profile-data/</code>, run <code>npm run build</code>, and your URL works with no server code at all.');
   }
 
   function copy(text) {
@@ -869,10 +882,12 @@
       setTimeout(function () { location.href = location.pathname; }, 700);
     });
 
-    $('btn-auto-url').addEventListener('click', function () {
-      readForm();
-      $('f-profile-url').value = defaultProfileUrl(state.profile.username || 'yourname');
-      markDirty(); renderPreview();
+    $('btn-copy-url').addEventListener('click', function (ev) {
+      var button = ev.currentTarget;
+      var label = button.textContent;
+      copy($('f-profile-url').value);
+      button.textContent = 'Copied';
+      setTimeout(function () { button.textContent = label; }, 1400);
     });
 
     Array.prototype.forEach.call($('ecl-picker').children, function (btn) {

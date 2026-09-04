@@ -49,7 +49,7 @@
       "id": "lnk_pricing",
       "label": "Pricing (private)",
       "url": "https://example.com/pricing",
-      "visibility": "private",
+      "visibility": "followers_only",
       "order": 4
     }
   ],

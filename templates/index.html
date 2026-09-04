@@ -4,20 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Card templates — QR Link Card</title>
-<meta name="description" content="Every card template, rendered live from the demo profiles, with the standalone QR code for each.">
-<link rel="stylesheet" href="assets/styles.css">
-<link rel="stylesheet" href="../assets/site.css">
+<meta name="description" content="Every card template — built-in and contributed — rendered live, with the standalone QR code for each.">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
-<body data-base-depth="1">
+<!--
+  The template gallery. Previews are rendered from examples/, not from your own
+  profile-data/, so this page is safe to leave public: a gallery should not print
+  the owner's private links into a page anyone can open.
+
+  Contributed templates appear here automatically. Each one is a single
+  self-registering file in card-templates/community/ listed in that folder's
+  index.json; gallery.js calls CardTemplates.loadCommunity() and renders whatever
+  arrived. See docs/TEMPLATES.md.
+-->
+<!-- data-profile-dir points the renderer at the example fixtures instead of your own profiles. -->
+<body data-base-depth="1" data-profile-dir="../examples/">
+
+<a class="sr-only" href="#templates">Skip to templates</a>
 
 <header class="topbar">
   <a class="brand" href="../index.html">QR Link Card</a>
   <nav>
-    <a href="../index.html">Overview</a>
+    <a href="../index.html">Cards</a>
     <a href="../card-builder/">Builder</a>
     <a href="../dashboard/">Dashboard</a>
-    <a href="profile.html?u=rahul123">Profile</a>
-    <a href="./" aria-current="page">Cards</a>
+    <a href="./" aria-current="page">Templates</a>
+    <a href="../print/">Print</a>
     <a href="../qr-generator/">QR tool</a>
   </nav>
 </header>
@@ -27,15 +39,13 @@
     <div>
       <h1>Card templates</h1>
       <p class="muted small mb0">
-        Rendered live from the demo profiles — these are the same drawings the PDF and PNG exports come
-        from, not screenshots. Add your own in
-        <a href="../card-templates/card-templates.js">card-templates.js</a>
-        (<a href="../docs/CUSTOMIZATION.md">guide</a>).
+        Rendered live from the example profiles — these are the same drawings the PDF and PNG exports
+        come from, not screenshots. Every template is free; nothing here is gated.
       </p>
     </div>
     <div class="btn-row">
       <a class="btn" href="../card-builder/">Build yours</a>
-      <a class="btn btn-ghost" href="print-sheet.html?u=rahul123">Print sheet</a>
+      <a class="btn btn-ghost" href="../print/?u=rahul123">Print sheet</a>
     </div>
   </div>
 
@@ -46,10 +56,30 @@
       <h2>Profile</h2>
       <span class="hint">Same templates, different person — the layout adapts to the content length.</span>
     </div>
-    <div class="segmented" id="profile-picker" role="group" aria-label="Demo profile"></div>
+    <div class="segmented" id="profile-picker" role="group" aria-label="Example profile"></div>
   </section>
 
   <div id="templates" class="stack mt2"></div>
+
+  <section class="panel mt2">
+    <div class="panel-head">
+      <h2>Contributed templates</h2>
+      <span class="hint" id="community-count">Checking the community folder…</span>
+    </div>
+    <div id="community-note" class="small muted">
+      <p>
+        A template is one file. Drop it in <code>card-templates/community/</code>, add a line to that
+        folder's <code>index.json</code> (or run <code>npm run build:templates</code> and let it write
+        the line for you), and it appears here and in the builder — no core file changes, so a pull
+        request adding a template cannot break anything else.
+      </p>
+      <p class="mb0">
+        <a href="../docs/TEMPLATES.md">Write a template</a> ·
+        <a href="../CONTRIBUTING.md">Send it upstream</a> ·
+        <a href="../docs/CUSTOMIZATION.md">Customise colours instead</a>
+      </p>
+    </div>
+  </section>
 
   <section class="panel mt2">
     <div class="panel-head">
@@ -85,6 +115,6 @@
 <script src="../lib/access.js"></script>
 <script src="../lib/card.js"></script>
 <script src="../lib/store.js"></script>
-<script src="assets/card-preview.js"></script>
+<script src="gallery.js"></script>
 </body>
 </html>

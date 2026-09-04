@@ -4,7 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QR Link Card</title>
-<link rel="stylesheet" href="assets/styles.css">
+<!--
+  No stylesheet link here, deliberately. Relative URLs in this file resolve against
+  the REQUESTED path, not against the repo root, so <link href="assets/styles.css">
+  would ask for /c/yourname/assets/styles.css and fail. profile/boot.js injects the
+  real stylesheet once it has worked out the base; the inline rule below is just so
+  the one line of text shown in the meantime is not unstyled.
+-->
+<style>
+  body { margin: 0; font: 15px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+         color: #1c1c22; background: #f6f6f4; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  code { font-size: 13px; background: rgba(20,20,30,.06); padding: 1px 5px; border-radius: 5px; }
+  a { color: inherit; }
+  .btn { display: inline-block; margin-top: 14px; padding: 9px 15px; border: 1px solid #1c1c22;
+         border-radius: 10px; text-decoration: none; font-weight: 600; }
+  .muted { color: #5c5c66; } .small { font-size: 13.5px; }
+</style>
 </head>
 <!--
   404.html — the reason a printed URL can be a clean /c/username/ on a static host.

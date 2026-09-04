@@ -49,6 +49,61 @@ const ids = (r) => r.visibleLinks.map(l => l.id);
 // Tier 1: public
 // ---------------------------------------------------------------------------
 
+test('visibility fails closed: anything not exactly "public" stays hidden', () => {
+  // This is the rule that decides what a stranger sees. It was written the other way
+  // round — "not followers_only means public" — and the shipped starter profile used
+  // "private", a value the enum does not contain, so the link it labelled private was
+  // published to everyone. Two independent defects, one visible failure.
+  const link = (visibility) => ({ id: 'l', label: 'L', url: 'https://x.example', visibility });
+
+  const hidden = [
+    ['followers_only', 'the real restricted value'],
+    ['private',        'the word people reach for, and the one that shipped broken'],
+    ['PRIVATE',        'wrong case'],
+    ['followers-only', 'hyphen instead of underscore'],
+    [undefined,        'field omitted entirely'],
+    ['',               'empty string'],
+    [null,             'null']
+  ];
+  hidden.forEach(([value, why]) => {
+    assert.equal(A.isLinkVisible(link(value), A.TIER.PUBLIC), false,
+      '"' + String(value) + '" must not be public (' + why + ')');
+    assert.equal(A.isPrivate(link(value)), true,
+      'isPrivate must agree with isLinkVisible for "' + String(value) + '"');
+    // An owner-approved visitor still sees it: failing closed hides, it does not delete.
+    assert.equal(A.isLinkVisible(link(value), A.TIER.FOLLOWER), true,
+      'an approved follower should still see "' + String(value) + '"');
+  });
+
+  assert.equal(A.isLinkVisible(link('public'), A.TIER.PUBLIC), true,
+    'an explicit public link is still public');
+  assert.equal(A.isPrivate(link('public')), false);
+  assert.equal(A.isLinkVisible(null, A.TIER.PUBLIC), false, 'no link is never visible');
+
+  // And through the full resolver, not just the predicate: a stranger scanning the card
+  // must not be handed the link, whatever word the owner typed.
+  const profile = {
+    username: 'typo', display_name: 'Typo',
+    links: [
+      { id: 'ok',   label: 'Site',    url: 'https://x.example',     visibility: 'public' },
+      { id: 'bad',  label: 'Rates',   url: 'https://x.example/r',   visibility: 'private' },
+      { id: 'none', label: 'No field', url: 'https://x.example/n' }
+    ]
+  };
+  const stranger = A.resolveAccess(profile, {});
+  assert.equal(stranger.tier, A.TIER.PUBLIC);
+  assert.deepEqual(stranger.visibleLinks.map(l => l.id), ['ok'],
+    'a stranger sees only the explicitly public link');
+  assert.equal(stranger.hiddenCount, 2);
+
+  const approved = A.resolveAccess(profile, { viewerId: 'user_1' }, {
+    followers: [{ follower_id: 'user_1', profile_username: 'typo', status: 'approved' }]
+  });
+  assert.equal(approved.tier, A.TIER.FOLLOWER);
+  assert.deepEqual(approved.visibleLinks.map(l => l.id).sort(), ['bad', 'none', 'ok'],
+    'an approved follower sees all of them, including the mislabelled ones');
+});
+
 test('a stranger sees only public links (Scenario A)', () => {
   const r = A.resolveAccess(PROFILE, {}, registry());
   assert.equal(r.tier, 'public');
@@ -230,9 +285,14 @@ test('validateProfile accepts the spec example and normalises gaps', () => {
   });
   assert.ok(patched.ok, patched.errors.join('; '));
   assert.equal(patched.profile.links[0].id, 'lnk_1', 'missing ids are generated');
-  assert.equal(patched.profile.links[0].visibility, 'public', 'unknown visibility becomes public');
+  // Fail closed. An unrecognised word is far likelier to be a misspelling of
+  // followers_only than of public, and guessing the other way publishes a link the
+  // owner meant to hide — to every stranger who scans a card that cannot be recalled.
+  assert.equal(patched.profile.links[0].visibility, 'followers_only',
+    'unknown visibility becomes followers_only, not public');
   assert.equal(patched.profile.links[1].order, 2, 'missing order is filled in');
-  assert.ok(patched.warnings.some(w => /unknown visibility/.test(w)));
+  assert.ok(patched.warnings.some(w => /unknown visibility/.test(w) && /followers_only/.test(w)),
+    'the warning must name both the bad value and the safe one it became');
   assert.ok(patched.warnings.some(w => /no scheme/.test(w)));
 
   // A link with no destination is a hard error, not something to paper over.
@@ -296,46 +356,101 @@ test('pruneExpiredTokens removes only the past', () => {
   assert.deepEqual(kept, ['live', 'open']);
 });
 
-test('the shipped profile-data files are valid and self-consistent', () => {
-  const dir = path.join(__dirname, '..', 'profile-data');
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
-  assert.ok(files.length >= 2, 'expected the demo profile and the template');
-  for (const file of files) {
-    const raw = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-    if (file === 'tokens.json') {
-      // That one is a token/follower registry (§5.2, §5.3), not a profile (§5.1).
-      const reg = A.validateRegistry(raw);
-      assert.ok(reg.tokens.length >= 2, 'the demo registry should ship working tokens');
-      assert.ok(reg.followers.length >= 1, 'and at least one approved follower');
-      assert.deepEqual(A.FOLLOWER_STATUS, ['pending', 'approved', 'rejected', 'removed']);
-      continue;
-    }
-    const v = A.validateProfile(raw);
-    assert.ok(v.ok, `${file}: ${v.errors.join('; ')}`);
-    if (file !== 'demo-template.json') {
-      assert.equal(raw.username + '.json', file, `${file}: filename must match the username`);
-      assert.ok(raw.profile_url, `${file}: needs profile_url so the QR has something to encode`);
-    }
+/**
+ * Both data directories ship JSON that other people will copy, so both are
+ * validated: `profile-data/` is the starter a fork edits, and `examples/` holds the
+ * fixtures the gallery renders and the DOM suite asserts against.
+ */
+['profile-data', 'examples'].forEach((dataDir) => {
+  test(`the shipped ${dataDir}/ files are valid and self-consistent`, () => {
+    const dir = path.join(__dirname, '..', dataDir);
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+    assert.ok(files.length >= 2, `expected profiles and a manifest in ${dataDir}/`);
 
-    // Every token target must exist, and every link id must be unique.
-    const linkIds = new Set(raw.links.map(l => l.id));
-    assert.equal(linkIds.size, raw.links.length, `${file}: duplicate link ids`);
+    // A registry is not a profile, and neither is the generated manifest. Both live
+    // beside the profiles because a static site has nowhere better to put them.
+    const NOT_PROFILES = new Set(['tokens.json', 'followers.json']);
 
-    const tokensPath = path.join(dir, 'tokens.json');
-    if (fs.existsSync(tokensPath)) {
-      const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf8'));
-      (tokens.tokens || []).forEach(t => {
-        if (t.profile_username !== raw.username) return;
-        assert.ok(linkIds.has(t.target_link_id),
-          `${file}: token ${t.token_value} points at unknown link ${t.target_link_id}`);
+    for (const file of files) {
+      const raw = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+
+      if (file === 'index.json') {
+        // The manifest is what listProfiles() reads, because a static site cannot
+        // enumerate a directory. It must agree with the files beside it.
+        const onDisk = files.filter(f => f !== 'index.json' && !NOT_PROFILES.has(f) && !f.startsWith('_'))
+          .map(f => f.replace(/\.json$/, '')).sort();
+        assert.deepEqual([...raw.profiles].sort(), onDisk,
+          `${dataDir}/index.json disagrees with the directory — run npm run build`);
+        assert.equal(raw.count, raw.profiles.length);
+        assert.ok(raw.$comment.some(line => /do not edit by hand/i.test(line)));
+        continue;
+      }
+
+      if (NOT_PROFILES.has(file)) {
+        // That one is a token/follower registry (§5.2, §5.3), not a profile (§5.1).
+        const reg = A.validateRegistry(raw);
+        assert.ok(reg.tokens.length >= 2, 'the registry should ship working tokens');
+        assert.ok(reg.followers.length >= 1, 'and at least one approved follower');
+        assert.deepEqual(A.FOLLOWER_STATUS, ['pending', 'approved', 'rejected', 'removed']);
+        continue;
+      }
+
+      const v = A.validateProfile(raw);
+      assert.ok(v.ok, `${file}: ${v.errors.join('; ')}`);
+      assert.equal(raw.username + '.json', file, `${file}: filename must match the username, ` +
+        'because the permanent URL is /c/<filename>/');
+
+      // Shipped data gets held to a stricter standard than a stranger's input: these are
+      // the files people copy. An unrecognised visibility value only WARNs during
+      // validation, so a check on v.ok alone let a starter profile publish the link it
+      // labelled private. Assert on the warnings, not just the errors.
+      const badVisibility = v.warnings.filter(w => /unknown visibility/.test(w));
+      assert.deepEqual(badVisibility, [],
+        `${file}: visibility must be exactly "public" or "followers_only" — ` + badVisibility.join('; '));
+      raw.links.forEach((l) => {
+        assert.ok(l.visibility === 'public' || l.visibility === 'followers_only',
+          `${file}: link ${l.id} has visibility ${JSON.stringify(l.visibility)}`);
       });
+
+      // And prove it behaviourally, per shipped file: whatever the JSON says, a stranger
+      // must not be handed a link the owner did not mark public.
+      const stranger = A.resolveAccess(raw, {});
+      const leaked = stranger.visibleLinks.filter(l => l.visibility !== 'public');
+      assert.deepEqual(leaked.map(l => l.id), [],
+        `${file}: a stranger at the public tier can see non-public link(s)`);
+      if (raw.links.some(l => l.visibility === 'followers_only')) {
+        assert.ok(stranger.hiddenCount >= 1,
+          `${file}: ships a followers_only link, so a stranger must be told some are hidden`);
+      }
+
+      // The inverse of what this test used to assert. A shipped profile must NOT
+      // carry a profile_url: the URL is derived from wherever the site is served, so
+      // a fork's cards point at the fork. A hardcoded one would make every fork
+      // print a QR code back to this repository.
+      assert.ok(!raw.profile_url, `${file}: must not hardcode profile_url — it is derived`);
+
+      // Every link id must be unique, and every token must target one that exists.
+      const linkIds = new Set(raw.links.map(l => l.id));
+      assert.equal(linkIds.size, raw.links.length, `${file}: duplicate link ids`);
+
+      const tokensPath = path.join(dir, 'tokens.json');
+      if (fs.existsSync(tokensPath)) {
+        const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf8'));
+        (tokens.tokens || []).forEach(t => {
+          if (t.profile_username !== raw.username) return;
+          assert.ok(linkIds.has(t.target_link_id),
+            `${file}: token ${t.token_value} points at unknown link ${t.target_link_id}`);
+        });
+      }
     }
-  }
+  });
 });
 
-test('the demo token in the repo has a fixed expiry for reproducible demos', () => {
+test('the example tokens have fixed expiries for reproducible demos', () => {
+  // Fixtures, not a deployment's own registry: these live in examples/ and are read
+  // by the gallery and by the DOM suite, so their values must not drift with time.
   const tokens = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'profile-data', 'tokens.json'), 'utf8'));
+    fs.readFileSync(path.join(__dirname, '..', 'examples', 'tokens.json'), 'utf8'));
   const live = tokens.tokens.find(t => t.token_value === 'temp_demo_live');
   assert.ok(live, 'the demo needs a token that always works for screenshots');
   assert.equal(live.max_uses, 0, 'demo tokens must not be single-use');
@@ -346,4 +461,16 @@ test('the demo token in the repo has a fixed expiry for reproducible demos', () 
     'fixed in the past so the demo keeps working years from now');
   assert.ok(Date.parse(expired.expires_at) < Date.now());
   assert.equal(expired.current_uses, expired.max_uses, 'and used up, for good measure');
+
+  // Both example people must be able to demonstrate all four tiers, or the gallery
+  // shows a half-working row and reads as a bug rather than a fixture.
+  ['rahul123', 'meera9'].forEach((username) => {
+    const mine = tokens.tokens.filter(t => t.profile_username === username);
+    const verdict = t => A.evaluateToken(t.token_value, username, tokens);
+    assert.ok(mine.some(t => verdict(t).valid), username + ' needs a live token');
+    assert.ok(mine.some(t => !verdict(t).valid && ['expired', 'exhausted'].includes(verdict(t).reason)),
+      username + ' needs an expired one');
+    assert.ok(tokens.followers.some(f => f.profile_username === username && f.status === 'approved'),
+      username + ' needs an approved follower');
+  });
 });

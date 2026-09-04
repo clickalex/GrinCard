@@ -415,3 +415,29 @@ footer.site a { text-decoration: underline; text-underline-offset: 3px; }
 .card-row-meta { grid-column: 1 / -1; color: var(--page-muted); font-size: 12.5px; display: flex; gap: 8px; align-items: center; }
 .pill { border-radius: 999px; padding: 1px 8px; font-size: 11.5px; border: 1px solid var(--page-border); }
 .pill-muted { background: rgba(20,20,30,.05); color: var(--page-muted); }
+
+/* ---------- shared page furniture ---------------------------------------
+   Used by templates/, examples/, print/ and the generated /c/ directory page,
+   none of which load dashboard.css. */
+
+.dash-head { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-bottom: 18px; }
+.dash-head h1 { margin: 0 0 2px; }
+.dash-head .btn-row { margin-left: auto; }
+
+/* the tier switcher on a profile page, and the same list on examples/ */
+.scenario-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.example-scenarios { grid-template-columns: 1fr; }
+@media (min-width: 720px) { .example-scenarios { grid-template-columns: repeat(2, 1fr); } }
+.example-scenarios a,
+.example-scenarios > li > span {
+  display: block; border: 1px solid var(--page-border); border-radius: 11px;
+  padding: 11px 13px; text-decoration: none; color: inherit; background: #fff;
+}
+.example-scenarios a:hover { border-color: var(--page-text); }
+.scenario-label { display: block; font-weight: 600; font-size: 14px; }
+.scenario-note { display: block; margin-top: 2px; }
+
+/* the collapsible "custom domain" override in the dashboard */
+.advanced { margin-top: 8px; }
+.advanced summary { cursor: pointer; font-size: 13px; color: var(--page-muted); }
+.advanced input { margin-top: 8px; }

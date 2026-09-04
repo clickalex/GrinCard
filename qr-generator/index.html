@@ -5,13 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QR Generator — open-qr-link-card</title>
 <meta name="description" content="Turn a list of URLs into scannable QR codes, one at a time or as a print-ready A4 sheet. Free, open source, runs entirely in your browser.">
-<link rel="stylesheet" href="../demo/assets/styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 <script src="../lib/qr.js"></script>
 <script src="../card-templates/card-templates.js"></script>
 <script src="../lib/card.js"></script>
 <script src="../lib/pdf.js"></script>
 <script src="../lib/pdfdoc.js"></script>
 <script src="../lib/export.js"></script>
+<!-- access.js must precede store.js: Store's UMD wrapper captures AccessRules at
+     load time. Both are here because this tool derives your profile URL from where
+     the site is served (Store.profileUrlFor) instead of hardcoding one. -->
+<script src="../lib/access.js"></script>
+<script src="../lib/store.js"></script>
 <script src="generator.js"></script>
 <script src="page.js" defer></script>
 <link rel="stylesheet" href="generator.css">
@@ -27,9 +32,11 @@
       QR Generator
     </a>
     <nav class="topnav">
-      <a href="../index.html">Home</a>
+      <a href="../index.html">Cards</a>
       <a href="../card-builder/index.html">Card builder</a>
       <a href="../dashboard/index.html">Dashboard</a>
+      <a href="../templates/">Templates</a>
+      <a href="../print/">Print</a>
       <a href="../docs/PRINTING.md">Printing guide</a>
     </nav>
   </div>
@@ -56,7 +63,9 @@
       <h2>Content</h2>
       <div class="field">
         <label for="q-text">Text or URL to encode</label>
-        <textarea id="q-text" rows="3" spellcheck="false">https://clickalex.github.io/GrinCard/demo/profile.html?u=rahul123</textarea>
+        <!-- Left empty on purpose: page.js fills it with YOUR derived profile URL,
+             because a fork's URL is not this repository's URL. -->
+        <textarea id="q-text" rows="3" spellcheck="false" placeholder="https://your-site/c/yourname/"></textarea>
         <p class="hint">
           For a card, this must be the <b>permanent</b> profile URL — temporary links expire and
           should never be printed. See <a href="../docs/ARCHITECTURE.md">the architecture notes</a>.
@@ -131,8 +140,8 @@ https://example.com/another"></textarea>
           <code>Label, https://…</code> or tab-separated. Blank lines and <code>#</code> comments are ignored.
         </p>
         <div class="example-row">
-          <button type="button" class="btn btn-ghost btn-sm" id="q-load-demo">Load demo list</button>
-          <button type="button" class="btn btn-ghost btn-sm" id="q-load-profiles">Load demo profiles</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="q-load-demo">Load example list</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="q-load-profiles">Load your profiles</button>
           <button type="button" class="btn btn-ghost btn-sm" id="q-clear">Clear</button>
         </div>
       </div>

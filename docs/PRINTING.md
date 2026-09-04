@@ -32,24 +32,30 @@ symbol divides evenly across it:
 | --- | --- | --- | --- | --- | --- | --- |
 | `https://you.dev/c/rahul123` | 26 | Q | 3 | 29 × 29 | **1.03 mm** | 12.2 |
 | `https://you.dev/c/rahul123` | 26 | M | 2 | 25 × 25 | 1.20 mm | 14.2 |
-| `https://you.github.io/repo/demo/profile.html?u=name` | 51 | Q | 5 | 37 × 37 | 0.81 mm | 9.6 |
-| the same URL | 51 | M | 4 | 33 × 33 | 0.91 mm | 10.7 |
-| the same URL | 51 | H | 6 | 41 × 41 | 0.73 mm | 8.6 |
-| `https://clickalex.github.io/GrinCard/demo/profile.html?u=rahul123` (this demo) | 65 | Q | 6 | 41 × 41 | 0.73 mm | 8.6 |
+| `https://you.github.io/repo/c/name/` | 34 | Q | 4 | 33 × 33 | 0.91 mm | 10.7 |
+| the same URL | 34 | M | 3 | 29 × 29 | 1.03 mm | 12.2 |
+| the same URL | 34 | H | 4 | 33 × 33 | 0.91 mm | 10.7 |
+| `https://clickalex.github.io/GrinCard/c/rahul123/` (this repo, on Pages) | 48 | Q | 5 | 37 × 37 | 0.81 mm | 9.6 |
 
 Offset and digital print hold a 0.1 mm dot comfortably, so every row above prints cleanly —
 0.73 mm is seven dots wide. The practical floor is nearer 0.33 mm (4 px at 300 DPI), which you
 would only reach by printing a 20 mm code for a very long URL at ECL H.
 
-The card preview page shows the real numbers for *your* URL: open `demo/card-preview.html` and
+The card preview page shows the real numbers for *your* URL: open `templates/` and
 read the QR panel, which gives the version, module count, mm-per-module and quiet zone. Check
 it before ordering 500.
 
-**Shorter URLs make better cards.** That first table row is the argument: `/c/rahul123` gives
-you 1.03 mm modules where the long GitHub Pages URL gives 0.81 mm at the same error-correction
-level — 27% more scanning margin, for free. Setting up the rewrite is twenty minutes of work
-([SETUP.md](../SETUP.md#3-clean-cusername-urls-recommended-for-real-cards)) and it pays off on
-every card you ever print.
+**Shorter URLs make better cards.** That first table row is the argument: a custom domain gives
+1.03 mm modules where the GitHub Pages URL gives 0.81 mm at the same error-correction level —
+27% more scanning margin. Every row above uses the `/c/<username>/` shape, because that is what
+this project generates by default: `npm run build` writes the stub, and
+[SETUP.md](../SETUP.md#4-how-cusername-works) explains how it works on a host that cannot
+rewrite URLs. There is no longer any setup cost to the short form.
+
+The remaining variable you control is the domain. Moving from
+`you.github.io/repo/c/name/` (34 characters) to `you.dev/c/name` (26) buys a whole QR version —
+one less is 4 modules narrower, so each module gets physically bigger. If you print thousands of
+cards, a short domain is the cheapest reliability you can buy.
 
 ---
 
@@ -59,7 +65,7 @@ every card you ever print.
 | --- | --- | --- |
 | Using a print shop or an online printer | **PDF**, with bleed enabled | Vector geometry at exact size. They can impose it into a gang run, and the text stays sharp at any DPI. |
 | Printing at home or the office | **PDF**, bleed off | Home printers cannot print to the edge, so bleed just wastes paper and confuses the layout. |
-| Cutting by hand from an A4 sheet | `demo/print-sheet.html` → Print | Lays out both sides with crop marks and a calibration ruler. |
+| Cutting by hand from an A4 sheet | `print/` → Print | Lays out both sides with crop marks and a calibration ruler. |
 | Sending a card in a chat app | **PNG** | 300 DPI raster, universally viewable. Not for professional printing — it is a picture of the card, not the card. |
 | Feeding a design pipeline (Figma, Illustrator, InDesign) | **SVG** | Scalable and editable, with the QR as real paths. |
 
@@ -105,7 +111,7 @@ stretch it. This is tracked in [PLANNING.md](../PLANNING.md).
 
 This is where most people go wrong, and it is always the same setting.
 
-1. Open `demo/print-sheet.html?u=yourname`.
+1. Open `print/?u=yourname`.
 2. Turn on **Bleed** only if you are trimming with a cutter and the sheet has room for it.
 3. Print → **More settings** → Scale: **100%** (or **Actual size**). Turn **off** "Fit to
    page", "Shrink to printable area" and "Scale to fit paper". They are on by default in most

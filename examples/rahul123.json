@@ -1,10 +1,18 @@
 {
+  "_comment": [
+    "Fixture profile — belongs to the project, not to you.",
+    "",
+    "Note what is NOT here: \"profile_url\". The permanent URL a card prints is",
+    "derived from wherever this site is being served (Store.profileUrlFor), so a",
+    "fork's cards point at the fork. Hardcoding one here would make every fork",
+    "print a QR code pointing back at this repository.",
+    "Set \"profile_url\" only to override with a domain you own."
+  ],
   "username": "rahul123",
   "display_name": "Rahul Kumar",
   "designation": "Freelance Illustrator",
   "tagline": "Brands, packaging and the occasional mural",
   "photo_url": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmMmIxMzQiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNkMTcxMWYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjEwMCIgeT0iMTMyIiBmb250LWZhbWlseT0iSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iODgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5SSzwvdGV4dD48L3N2Zz4=",
-  "profile_url": "https://clickalex.github.io/GrinCard/demo/profile.html?u=rahul123",
   "theme": "template-1",
   "created_at": "2026-09-04T10:00:00Z",
   "links": [

@@ -60,11 +60,11 @@ deferred without making the rest untestable.
 
 | Day | Planned | Built | Notes |
 | --- | --- | --- | --- |
-| 1 | HTML profile page reading JSON from `/profile-data/` with visibility flags | `demo/profile.html` + `demo/assets/profile.js` + `lib/store.js` + `lib/access.js` | All four visitor scenarios, tier banner, 404 and fetch-error states, monogram fallback |
+| 1 | HTML profile page reading JSON from `/profile-data/` with visibility flags | `profile/` + `assets/profile.js` + `lib/store.js` + `lib/access.js` | All four visitor scenarios, tier banner, 404 and fetch-error states, monogram fallback |
 | 2 | Card builder with 2 CSS templates + `html2canvas` PNG download | `card-builder/` with **3** templates; PNG **and** vector PDF **and** SVG | `html2canvas` replaced — see [the deviation](#the-one-big-deviation) |
 | 3 | `qrcode.js` QR on the card back | `lib/qr.js` — a from-scratch encoder | No CDN dependency; verified against the reference package and against jsQR |
-| 4 | Temporary-link demo via `?t=` + a JSON token file + timestamp expiry | `lib/access.js` tokens + the dashboard's mint/revoke UI + `profile-data/tokens.json` | Includes use-count limits and the "expired" downgrade path |
-| 5 | Docs (`README`, setup, example `rahul123.json`) + GitHub Pages from `/demo` | This set of seven documents, two example profiles, Pages from the **repo root** | Root publishing keeps `../lib/` reachable — see [SETUP.md](SETUP.md) |
+| 4 | Temporary-link demo via `?t=` + a JSON token file + timestamp expiry | `lib/access.js` tokens + the dashboard's mint/revoke UI + `examples/tokens.json` | Includes use-count limits and the "expired" downgrade path |
+| 5 | Docs (`README`, setup, example `rahul123.json`) + GitHub Pages from `/demo` | Eight documents, two example profiles in `examples/`, Pages from the **repo root** | Root publishing keeps `../lib/` reachable — see [SETUP.md](SETUP.md) |
 
 ### Beyond the five days
 
@@ -74,9 +74,9 @@ These were not in the plan and are here because each one removed a way to be wro
   level, mint and revoke temporary links, approve or reject followers, simulate being a visitor,
   export everything. Without it, changing a demo meant hand-editing JSON, which meant the access
   rules were never exercised by a real workflow.
-- **`demo/print-sheet.html`** — both sides at true millimetre size with an 89 mm calibration ruler
+- **`print/`** — both sides at true millimetre size with an 89 mm calibration ruler
   and print CSS. This is how "print first" gets checked rather than claimed.
-- **`demo/card-preview.html`** — every template × both sides × both demo profiles, plus a
+- **`templates/`** — every template × both sides × both demo profiles, plus a
   deliberate long-text stress row per template, plus a QR panel reporting version, module count,
   mm-per-module and quiet zone. Overflow bugs become visible before a print run.
 - **`qr-generator/`** — one code, or a pasted list laid out on A4/Letter/A5/A6 as a multi-page
@@ -169,9 +169,38 @@ Small, self-contained, no server. Roughly in priority order:
    previews and keyboard-reachable controls, and `dom.test.js` asserts the structural parts. What
    is missing is someone actually using a screen reader through the builder flow and telling us
    what is wrong.
-7. **`/c/username` shipped as generated files.** A tiny script that reads `profile-data/*.json`
-   and writes `c/<username>/index.html` redirect stubs, so GitHub Pages users get short URLs
-   without hand-maintaining one file per person.
+7. ~~**`/c/username` shipped as generated files.**~~ **Done** — `tools/build-links.js` writes
+   `c/<username>/index.html` from `profile-data/*.json`, plus the manifests a static site needs
+   because it cannot list a directory. It runs in `.github/workflows/pages.yml` on every push, so
+   nobody maintains one file per person by hand. See
+   [the fork-to-deploy pivot](#v16--the-fork-to-deploy-pivot).
+
+---
+
+## V1.6 — the fork-to-deploy pivot
+
+Shipped after V1. The change was in what this repository *is*: not a demo of a product, but a
+template anyone can fork, deploy and own.
+
+| Decision | What it means |
+| --- | --- |
+| The site root is the forker's own card index | `index.html` lists their profiles with the URL to print and a QR beside it. The project's marketing moved to `README.md`, where a reader on GitHub will actually see it. |
+| Nobody ever types their own URL | `Store.siteRoot()` derives the deployment root from the URL of its own script tag; `Store.profileUrlFor()` builds `/c/<username>/` from it. A fork's cards point at the fork, and moving to a custom domain changes nothing. |
+| `/c/<username>/` is the printed URL | Generated stubs (`tools/build-links.js`) make it a real file, and `404.html` boots the same renderer in place for any path — so it works on a branch deploy, before a build, and for a profile someone forgot to generate. |
+| One starter profile, examples elsewhere | `profile-data/` ships `yourname.json` to rename. The demo fixtures moved to `examples/`, where the tests read them too, so what the gallery shows is what CI asserts. |
+| Templates are a drop-in contribution | One self-registering file in `card-templates/community/` plus one manifest line, validated by `tools/build-templates.js` and rendered by `templates/`. No core file changes, so two design pull requests cannot conflict. |
+| CI protects the fork, not just the code | `.github/workflows/ci.yml` runs the tests, checks that every internal link resolves (`tools/check-links.js`), and fails if a generated manifest is stale. |
+
+The one renderer decision that made this affordable: `profile/profile.js` was already rendering
+entirely into `#profile-root` from JSON, so `profile/boot.js` could give it a chrome and a
+username from any host at any depth. Three hosts (`profile/`, `c/<user>/`, `404.html`) share it,
+and nothing in the renderer knows which one it is.
+
+What this pivot deliberately did **not** change: the V1 trust model. A static deployment still
+fetches the profile JSON in the visitor's browser, so private links remain visible to anyone who
+reads the network response. Making the fork model public made that more important to say out
+loud, not less — it is in `README.md`, on `examples/`, and in
+[ARCHITECTURE.md](docs/ARCHITECTURE.md#the-v1-trust-model). V2 is still the answer.
 
 ---
 
@@ -231,7 +260,7 @@ followers(id TEXT PRIMARY KEY, profile_username TEXT REFERENCES profiles,
           UNIQUE (profile_username, follower_id))
 ```
 
-The schema is the JSON files, normalised. `profile-data/tokens.json` maps onto `tokens` and
+The schema is the JSON files, normalised. `examples/tokens.json` maps onto `tokens` and
 `followers` one-for-one, so migrating a V1 self-hoster is a script, not a project.
 
 Index on `(profile_username, status)` for followers and `(profile_username, expires_at)` for

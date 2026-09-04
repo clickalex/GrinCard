@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Print sheet — QR Link Card</title>
-<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 <style>
   /* The sheet is laid out in real millimetres so browser printing is 1:1. */
   .sheet-controls { padding: 20px; }
@@ -43,9 +43,11 @@
 <header class="topbar no-print">
   <a class="brand" href="../index.html">QR Link Card</a>
   <nav>
+    <a href="../index.html">Cards</a>
     <a href="../card-builder/">Builder</a>
     <a href="../dashboard/">Dashboard</a>
-    <a href="profile.html">Profile</a>
+    <a href="../templates/">Templates</a>
+    <a href="./" aria-current="page">Print</a>
     <a href="../qr-generator/">QR tool</a>
   </nav>
 </header>
@@ -88,6 +90,6 @@
 <script src="../lib/access.js"></script>
 <script src="../lib/card.js"></script>
 <script src="../lib/store.js"></script>
-<script src="assets/print-sheet.js"></script>
+<script src="print-sheet.js"></script>
 </body>
 </html>

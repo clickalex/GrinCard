@@ -14,19 +14,27 @@
   var Card = window.Card;
   var Exporter = window.Exporter;
 
+  /**
+   * The blank card a new fork starts from.
+   *
+   * Deliberately the same identity as profile-data/yourname.json, so "open the
+   * builder" and "edit the starter profile" describe one person rather than two.
+   * The example people live in examples/ and are reachable from the gallery; they
+   * are fixtures for the tests, not a template for someone's own card.
+   */
   var draft = {
-    username: 'rahul123',
-    display_name: 'Rahul Kumar',
-    designation: 'Freelance Illustrator',
-    tagline: 'Brands, packaging and the occasional mural',
+    username: 'yourname',
+    display_name: 'Your Name',
+    designation: 'What you do',
+    tagline: 'One line people remember you by',
     photo_url: '',
-    profile_url: '',
+    profile_url: '',          // derived at render time; see defaultUrl()
     created_at: new Date().toISOString(),
     links: [
-      { id: 'lnk_1', label: 'Instagram', url: 'https://instagram.com/rahul_art', visibility: 'public', order: 1 },
-      { id: 'lnk_2', label: 'Portfolio', url: 'https://behance.net/rahulkumar', visibility: 'public', order: 2 },
-      { id: 'lnk_3', label: 'Pricing List', url: 'https://docs.example.com/pricing', visibility: 'followers_only', order: 3 },
-      { id: 'lnk_4', label: 'WhatsApp', url: 'https://wa.me/911234567890', visibility: 'followers_only', order: 4 }
+      { id: 'lnk_1', label: 'Website', url: 'https://example.com', visibility: 'public', order: 1 },
+      { id: 'lnk_2', label: 'Email me', url: 'mailto:you@example.com', visibility: 'public', order: 2 },
+      { id: 'lnk_3', label: 'Book a call', url: 'https://cal.com/yourname', visibility: 'public', order: 3 },
+      { id: 'lnk_4', label: 'Pricing (private)', url: 'https://example.com/pricing', visibility: 'followers_only', order: 4 }
     ],
     card_settings: { template_id: 'template-1', show_photo: true }
   };
@@ -77,9 +85,15 @@
     };
   }
 
-  function defaultUrl(username) {
-    return location.origin + Store.pageRelative('../demo/profile.html') +
-      '?u=' + encodeURIComponent(username || 'yourname');
+  /**
+   * The URL that goes into the QR: derived, never typed.
+   *
+   * Store.profileUrlFor() reads where these scripts are being served from, so a
+   * fork's cards encode the fork's own /c/<username>/ link with no configuration,
+   * and an absolute profile_url in the JSON still wins for custom domains.
+   */
+  function defaultUrl(username, profile) {
+    return Store.profileUrlFor(username || draft.username, profile);
   }
 
   // ---------------------------------------------------------------------------
@@ -89,7 +103,7 @@
   function renderTemplates() {
     var box = $('b-templates');
     clear(box);
-    TPL.TEMPLATES.forEach(function (t) {
+    TPL.all().forEach(function (t) {
       var bg = t.front.background;
       var style = bg.type === 'gradient'
         ? 'background:linear-gradient(135deg,' + bg.from + ',' + bg.to + ')'
@@ -103,7 +117,7 @@
         }
       }, [
         el('span', { class: 'swatch', style: style }),
-        el('span', { class: 'name', text: t.name }),
+        el('span', { class: 'name', text: t.name + (t.community ? ' · contributed' : '') }),
         el('span', { class: 'desc', text: t.description })
       ]));
     });
@@ -204,7 +218,10 @@
     draft.display_name = $('b-name').value.trim();
     draft.designation = $('b-role').value.trim();
     draft.tagline = $('b-tagline').value.trim();
-    draft.profile_url = $('b-url').value.trim();
+    // b-url is read-only and derived: do NOT read it back into the draft, or an
+    // absolute URL would be baked into the exported JSON and go stale if the site
+    // moves. An override only arrives from a profile_url already in the JSON.
+    if (draft.profile_url === undefined) draft.profile_url = '';
     draft.card_settings.show_photo = $('b-show-photo').checked;
   }
 
@@ -252,13 +269,16 @@
     var p = JSON.parse(JSON.stringify(draft));
     Access.sortedLinks(p).forEach(function (l, i) { l.order = i + 1; });
     p.links = Access.sortedLinks(p);
-    if (!p.profile_url) p.profile_url = defaultUrl(p.username);
+    // Leave profile_url out of the exported file so the URL stays derived. Keeping
+    // it would hardcode today's domain into someone's repository.
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(p.profile_url || '')) delete p.profile_url;
     Exporter.download(
       new Blob([JSON.stringify(p, null, 2) + '\n'], { type: 'application/json' }),
       (p.username || 'profile') + '.json'
     );
     alert('ok', 'Downloaded <code>' + escapeHtml(p.username || 'profile') +
-      '.json</code>. Put it in <code>profile-data/</code> and your URL works with no server code.');
+      '.json</code>. Put it in <code>profile-data/</code>, run <code>npm run build</code>, ' +
+      'and your URL works with no server code.');
   }
 
   function downloadQrOnly() {
@@ -273,14 +293,27 @@
     readForm();
     if (!draft.username) { alert('danger', 'A username is required first.'); return; }
     Store.saveProfile(draft);
-    window.open('../demo/print-sheet.html?u=' + encodeURIComponent(draft.username) + '&ecl=' + ecl, '_blank');
+    window.open('../print/?u=' + encodeURIComponent(draft.username) + '&ecl=' + ecl, '_blank');
   }
 
   // ---------------------------------------------------------------------------
 
   function wire() {
-    ['b-name', 'b-role', 'b-tagline', 'b-username', 'b-url'].forEach(function (id) {
-      $(id).addEventListener('input', function () { readForm(); renderPreview(); });
+    ['b-name', 'b-role', 'b-tagline', 'b-username'].forEach(function (id) {
+      $(id).addEventListener('input', function () {
+        readForm();
+        // The printed URL follows the username, live, so what you see is what you print.
+        $('b-url').value = defaultUrl(draft.username, draft);
+        renderPreview();
+      });
+    });
+    $('b-copy-url').addEventListener('click', function (ev) {
+      var button = ev.currentTarget;
+      var label = button.textContent;
+      Exporter.copyText($('b-url').value).then(function (ok) {
+        button.textContent = ok ? 'Copied' : 'Select it';
+        setTimeout(function () { button.textContent = label; }, 1400);
+      });
     });
     $('b-show-photo').addEventListener('change', function () {
       draft.card_settings.show_photo = this.checked;
@@ -330,6 +363,11 @@
     var last = Store.getLastUsername();
     var wanted = new URLSearchParams(location.search).get('u') || last;
     wire();
+    // Contributed templates live in their own folder and are listed in a manifest,
+    // because a static site cannot enumerate a directory. Load them first so the
+    // picker shows everything this deployment has.
+    CardTemplates.loadCommunity(Store.rootRelative('card-templates/community/'))
+      .then(function () { renderTemplates(); renderPreview(); });
     renderTemplates();
     renderEcl();
     $('b-url').value = defaultUrl(draft.username);
@@ -344,7 +382,7 @@
       $('b-role').value = draft.designation || '';
       $('b-tagline').value = draft.tagline || '';
       $('b-username').value = draft.username || '';
-      $('b-url').value = draft.profile_url || defaultUrl(draft.username);
+      $('b-url').value = defaultUrl(draft.username, draft);
       $('b-show-photo').checked = draft.card_settings.show_photo !== false;
       renderTemplates();
       renderLinks();

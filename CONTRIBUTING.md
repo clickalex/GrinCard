@@ -4,6 +4,20 @@ Thank you for looking at this. The bar for contributing here is low: the whole p
 plain HTML, CSS and ES5-compatible JavaScript with no build step, so you can change something
 and see it in a browser in five seconds.
 
+There are two very different kinds of contribution, and the difference is deliberate:
+
+- **[A card template](#contributing-a-card-template)** — one new file in
+  `card-templates/community/`, no core changes, validated by CI. Designs are a matter of taste
+  and taste does not need a maintainer's approval to exist, so this path is as frictionless as
+  we can make it. Start with [docs/TEMPLATES.md](docs/TEMPLATES.md).
+- **[A change to the core](#adding-a-feature)** — the encoder, the access rules, the card
+  geometry, the tools, the tests. Read the rest of this file first.
+
+This repository is also a template that people fork to make their own link-sharing system, so
+one extra rule applies to everything: **a fork must never have to edit a URL, a domain or a
+deployment path.** If your change requires the person who forked it to configure where they
+hosted it, derive it instead (see `Store.siteRoot()`).
+
 ---
 
 ## Getting set up
@@ -11,12 +25,13 @@ and see it in a browser in five seconds.
 ```bash
 git clone https://github.com/clickalex/GrinCard.git
 cd GrinCard
-python3 -m http.server 8080        # or: npx serve .
+npm run build                      # generate the /c/<username>/ stubs and manifests
+npm start                          # python3 -m http.server 8080
 ```
 
 Open <http://localhost:8080/>. There is nothing to install to *run* the project — no
-`node_modules`, no bundler, no transpiler, no CSS preprocessor. Node is only needed for the
-tests.
+`node_modules`, no bundler, no transpiler, no CSS preprocessor. Node is needed for the tests and
+for `npm run build`, which writes a handful of small generated files and nothing else.
 
 Please do not open the HTML files directly over `file://`: browsers block `fetch()` between
 local files, so the pages load but show no data. That looks like a bug and is not one.
@@ -151,14 +166,56 @@ that matters.
 
 - A new access rule → `tests/access.test.js`. Cover every tier transition and every failure
   reason; the existing tests are a good shape to copy.
-- A new template → usually nothing. `demo/card-preview.html` renders every template twice per
-  side (once normal, once with a 28-character name) so layout regressions are visible by eye.
-  If your template does something structural, add a `tests/card.test.js` case.
+- A new template → nothing, and that is intentional. `tools/build-templates.js` validates it
+  against the schema in CI (including the "QR tile must be light" rule), and `templates/` renders
+  every registered template twice per side — once normal, once with a 28-character name — so
+  layout regressions are visible by eye. If your template does something *structural*, add a
+  `tests/card.test.js` case. See [docs/TEMPLATES.md](docs/TEMPLATES.md).
+- A new tool in `tools/` → a `tests/tools.test.js` case that runs it against a fixture directory
+  and asserts on the files it wrote, including that a second run changes nothing.
+- A new generated file → make `npm run validate` check it. CI fails on a stale manifest, which
+  is the only thing standing between a contributor and a silently missing profile.
 - A new page → add it to the page/script pairs in `tests/dom.test.js`. Two static checks run
   automatically over every HTML file: no reference to a missing local file, and no CDN or
   dependency mention. They will fail your PR if you add a `<script src="https://…">`.
 - Anything that produces a printable artefact → assert the millimetre dimensions and, if it
   contains a QR, decode it. Do not assert "the PDF contains the string `89`".
+
+---
+
+## Contributing a card template
+
+The short version — [docs/TEMPLATES.md](docs/TEMPLATES.md) has the full schema and the
+troubleshooting table.
+
+```bash
+cp card-templates/community/sunset.js card-templates/community/my-design.js
+$EDITOR card-templates/community/my-design.js     # change id, name, colours
+npm run build:templates                            # validates it, writes index.json
+npm start                                          # open /templates/ to see it
+```
+
+Then commit **both** the new file and the regenerated
+`card-templates/community/index.json`, and open a pull request.
+
+A template is data, not code, so review is about three things:
+
+1. **It is valid.** `tools/build-templates.js` already checked the schema, that the `id` is
+   unique across core and community, and — the one rule that is not about taste — that
+   `back.qrTile` is a light colour, because inverted QR codes fail on a large fraction of phone
+   cameras.
+2. **It survives real content.** The gallery renders every template twice: once normally, once
+   with a 28-character name, a long role and a long tagline. Both must fit inside the
+   89 × 51 mm trim area with no overflow.
+3. **It is honest about itself.** `name`, `description` and `author` are what the gallery shows,
+   so they should describe the design rather than advertise. `license` defaults to MIT.
+
+No core file changes, which is the point: a pull request that only adds a file cannot conflict
+with another one that only adds a file.
+
+Please also check what a browser preview cannot tell you — print one (the PDF export from
+`card-builder/`, at 100%, not fit-to-page), scan it with a phone in ordinary indoor light, and
+look at it in greyscale, because plenty of cards are printed in one colour.
 
 ---
 
@@ -191,7 +248,7 @@ that matters.
 - Run `npm test` with the oracles installed (all 126, not the 58 that skip) and say so in the
   description.
 - If you changed print geometry, say what you measured. A ruler against
-  `demo/print-sheet.html` counts.
+  `print/` counts.
 
 Things that will get a PR bounced:
 
@@ -219,7 +276,7 @@ The most useful report says:
    form; the dashboard shows the full one), the phone, and how far away you held it.
 
 For anything involving a QR that will not scan, the fastest diagnosis is
-`demo/card-preview.html` — its QR panel reports the version, module count and mm-per-module for
+`templates/` — its QR panel reports the version, module count and mm-per-module for
 your exact URL, which tells you immediately whether the problem is density or something else.
 
 ---
@@ -232,6 +289,9 @@ your exact URL, which tells you immediately whether the problem is density or so
 | Why does the card look like this? | `card-templates/card-templates.js` (colours, type) and `lib/card.js` (layout) |
 | Why is the PDF like this? | `lib/pdf.js` (cards) or `lib/pdfdoc.js` (sheets) |
 | Where does the page's data come from? | `lib/store.js` — repo JSON merged with `localStorage` |
+| Where does a page's URL come from? | `lib/store.js` → `siteRoot()`, `rootRelative()`, `profileUrlFor()` |
+| How does `/c/<username>/` exist? | `tools/build-links.js` (stubs) and `404.html` (fallback) |
+| How does a template get loaded? | `CardTemplates.loadCommunity()` + `card-templates/community/index.json` |
 | Why is the download like this? | `lib/export.js` |
 | What are the physical dimensions? | `CardTemplates.GEOMETRY` |
 | What is planned and why? | [PLANNING.md](PLANNING.md) |

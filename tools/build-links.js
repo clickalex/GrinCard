@@ -33,10 +33,11 @@ const ROOT = path.resolve(__dirname, '..');
 const USERNAME_RE = /^[a-z0-9_.-]{3,32}$/i;
 
 function args(argv) {
-  const out = { data: 'profile-data', out: 'c', check: false, clean: false, quiet: false };
+  const out = { data: 'profile-data', out: 'c', check: false, clean: false, quiet: false, manifestOnly: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--check') out.check = true;
+    else if (a === '--manifest-only') out.manifestOnly = true;
     else if (a === '--clean') out.clean = true;
     else if (a === '--quiet' || a === '-q') out.quiet = true;
     else if (a === '--data') out.data = argv[++i];
@@ -50,8 +51,11 @@ function args(argv) {
 function readProfiles(dataDir) {
   if (!fs.existsSync(dataDir)) return { profiles: [], errors: [`no such directory: ${dataDir}`] };
   const errors = [];
+  // Registry and manifest files live beside the profiles but are not profiles.
+  // Without this, tokens.json would be published as a person called "tokens".
+  const NOT_PROFILES = new Set(['index.json', 'tokens.json', 'followers.json']);
   const profiles = fs.readdirSync(dataDir)
-    .filter((f) => f.endsWith('.json') && f !== 'index.json')
+    .filter((f) => f.endsWith('.json') && !NOT_PROFILES.has(f) && !f.startsWith('_'))
     .sort()
     .map((file) => {
       const nameFromFile = file.replace(/\.json$/, '');
@@ -227,7 +231,7 @@ function removeStubs(outDir, keep) {
 function main(argv) {
   const opts = args(argv || process.argv.slice(2));
   if (opts.help) {
-    console.log('Usage: node tools/build-links.js [--check] [--clean] [--data DIR] [--out DIR] [--quiet]');
+    console.log('Usage: node tools/build-links.js [--check] [--clean] [--manifest-only] [--data DIR] [--out DIR] [--quiet]');
     return 0;
   }
 
@@ -281,6 +285,17 @@ function main(argv) {
 
   const changed = [];
   if (writeIfChanged(manifestFile, manifestText)) changed.push(path.relative(ROOT, manifestFile));
+
+  // --manifest-only is for fixture sets (examples/) that are read by a gallery
+  // rather than published as /c/<username>/ URLs.
+  if (opts.manifestOnly) {
+    if (!opts.quiet) {
+      console.log(`${opts.data}/index.json: ${profiles.length} profile(s)` +
+        (changed.length ? ' (written)' : ' (already up to date)'));
+    }
+    return 0;
+  }
+
   if (writeIfChanged(directoryFile, directoryText)) changed.push(path.relative(ROOT, directoryFile));
 
   profiles.forEach((p) => {

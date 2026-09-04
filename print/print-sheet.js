@@ -52,9 +52,10 @@
   }
 
   function build(profile, ecl) {
-    var url = profile.profile_url ||
-      (location.origin + location.pathname.replace(/\/print-sheet\.html$/, '/profile.html') +
-        '?u=' + encodeURIComponent(profile.username));
+    // The QR always encodes the permanent /c/<username>/ URL, derived from where
+    // this site is served. It is never a destination and never a temporary token:
+    // a printed code cannot be revoked, so it must not be able to expire.
+    var url = Store.profileUrlFor(profile.username, profile);
     var opts = { profileUrl: url, ecl: ecl || 'Q' };
 
     var photo = profile.photo_url;
@@ -69,17 +70,47 @@
     render();
   }
 
+  /**
+   * Which profile to lay out? Explicit ?u= wins, then whoever was edited most
+   * recently in this browser, then the first real profile this deployment has.
+   * Never a hardcoded demo name: on a fork that person does not exist.
+   */
+  function resolveUsername(params) {
+    var explicit = params.get('u') || Store.getLastUsername();
+    if (explicit) return Promise.resolve(explicit);
+    return Store.listProfiles().then(function (list) {
+      var real = list.filter(function (p) { return !p._starter; })[0];
+      return (real || list[0] || {}).username || '';
+    }).catch(function () { return ''; });
+  }
+
   function boot() {
     var params = new URLSearchParams(location.search);
-    var username = params.get('u') || Store.getLastUsername() || 'rahul123';
     var ecl = params.get('ecl') || 'Q';
+    var resolvedUsername = '';   // read by the button handlers below, which are
+                                 // wired before the profile promise settles
 
-    Store.loadProfile(username).then(function (profile) {
+    // Contributed templates must be registered before we draw: a profile whose
+    // card_settings pick one would otherwise fall back to template-1 and print a
+    // card that does not match what the gallery showed.
+    var community = window.CardTemplates.loadCommunity(
+      Store.rootRelative('card-templates/community/'));
+
+    Promise.all([resolveUsername(params), community]).then(function (resolved) {
+      var username = resolved[0];
+      return Store.loadProfile(username).then(function (profile) {
+        return { username: username, profile: profile };
+      });
+    }).then(function (loaded) {
+      var username = loaded.username;
+      var profile = loaded.profile;
+      resolvedUsername = username;
       if (!profile) {
         sheet.innerHTML = '';
         sheet.appendChild(el('div', { class: 'empty-links' }, [
-          el('p', { text: 'No profile called “' + username + '”.' }),
-          el('p', { html: 'Try <a href="?u=rahul123">rahul123</a> or build one in the ' +
+          el('p', { text: username ? 'No profile called “' + username + '”.' : 'No profiles yet.' }),
+          el('p', { html: 'Pick one from <a href="../index.html">your cards</a>, look at the ' +
+            '<a href="../examples/">example profiles</a>, or build one in the ' +
             '<a href="../card-builder/">card builder</a>.' })
         ]));
         return;
@@ -105,7 +136,8 @@
     });
     document.getElementById('btn-pdf').addEventListener('click', function (e) {
       e.preventDefault();
-      location.href = '../dashboard/?u=' + encodeURIComponent(username);
+      if (!resolvedUsername) { location.href = '../dashboard/'; return; }
+      location.href = '../dashboard/?u=' + encodeURIComponent(resolvedUsername);
     });
   }
 

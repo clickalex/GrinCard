@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Card Builder — QR Link Card</title>
 <meta name="description" content="Type your details, pick a template, download a print-ready business card with a QR code that never goes out of date.">
-<link rel="stylesheet" href="../demo/assets/styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 <link rel="stylesheet" href="../dashboard/dashboard.css">
 </head>
 <body data-base-depth="1">
@@ -26,7 +26,8 @@
     <a href="../index.html">Overview</a>
     <a href="./" aria-current="page">Builder</a>
     <a href="../dashboard/">Dashboard</a>
-    <a href="../demo/profile.html?u=rahul123">Profile</a>
+    <a href="../profile/">Profile</a>
+    <a href="../templates/">Templates</a>
     <a href="../qr-generator/">QR tool</a>
     <a href="../docs/ARCHITECTURE.md">Docs</a>
   </nav>
@@ -41,7 +42,7 @@
       </p>
     </div>
     <div class="btn-row">
-      <a class="btn btn-ghost btn-sm" href="../demo/profile.html?u=rahul123">See a live example</a>
+      <a class="btn btn-ghost btn-sm" href="../examples/">See the example cards</a>
     </div>
   </div>
 
@@ -57,30 +58,33 @@
 
         <div class="field">
           <label for="b-name">Name</label>
-          <input type="text" id="b-name" value="Rahul Kumar" autocomplete="name">
+          <input type="text" id="b-name" value="Your Name" autocomplete="name">
         </div>
         <div class="field">
           <label for="b-role">Designation</label>
-          <input type="text" id="b-role" value="Freelance Illustrator">
+          <input type="text" id="b-role" value="What you do">
         </div>
         <div class="field">
           <label for="b-tagline">Tagline <span class="muted">(optional)</span></label>
-          <input type="text" id="b-tagline" value="Brands, packaging and the occasional mural">
+          <input type="text" id="b-tagline" value="One line people remember you by">
         </div>
         <div class="field">
           <label for="b-username">Username — your permanent URL</label>
           <div class="inline-input">
             <span class="prefix mono">/c/</span>
-            <input type="text" id="b-username" value="rahul123" spellcheck="false" autocomplete="off">
+            <input type="text" id="b-username" value="yourname" spellcheck="false" autocomplete="off">
           </div>
           <p class="help">This is what the QR encodes. It never changes, so the printed card never goes stale.</p>
         </div>
         <div class="field">
           <label for="b-url">Full profile URL</label>
-          <input type="url" id="b-url">
+          <div class="url-row">
+            <input type="text" id="b-url" readonly spellcheck="false">
+            <button type="button" class="btn btn-sm" id="b-copy-url">Copy</button>
+          </div>
           <p class="help">
-            Defaults to this site. When you deploy your own, put your real domain here — that is what
-            people will scan.
+            Derived from where this site is served — type your username above and the printed URL
+            follows. Deploy your fork and this becomes your own domain automatically.
           </p>
         </div>
         <div class="field">

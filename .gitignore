@@ -22,6 +22,7 @@ Thumbs.db
 # Local artifacts
 /tmp/
 *.log
+.test-tmp-*/
 profile-data/*.local.json
 
 # Generated per-username stubs (`npm run build`, and the Pages workflow on every

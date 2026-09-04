@@ -1,7 +1,13 @@
 /*!
- * card-preview.js — renders every template against a chosen demo profile (§7.1).
- * Useful for picking a design, and for checking that a new template renders
- * sensibly with long names, missing photos and both layouts.
+ * templates/gallery.js — renders every template against an example profile.
+ *
+ * Two audiences, one page: a person picking a design for their own card, and a
+ * contributor checking that a new template survives long names, missing photos
+ * and both layouts. Every template registered by the time we render is shown, so
+ * contributed templates appear here without this file changing.
+ *
+ * Previews come from examples/ (see data-profile-dir on the host page), never from
+ * the owner's own profile-data/ — a public gallery should not leak private links.
  */
 (function () {
   'use strict';
@@ -11,9 +17,9 @@
   var Store = window.Store;
   var Access = window.AccessRules;
 
-  var candidates = ['rahul123', 'meera9'];
+  var candidates = [];      // filled from examples/index.json
   var profiles = {};
-  var current = candidates[0];
+  var current = null;
 
   function $(id) { return document.getElementById(id); }
 
@@ -34,10 +40,12 @@
 
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
+  /**
+   * The URL the gallery prints into each card's QR: the canonical /c/<username>/
+   * link, derived from where this site is served rather than hardcoded here.
+   */
   function profileUrl(profile) {
-    return profile.profile_url ||
-      (location.origin + location.pathname.replace(/\/card-preview\.html$/, '/profile.html') +
-        '?u=' + encodeURIComponent(profile.username));
+    return Store.profileUrlFor(profile.username, profile);
   }
 
   function renderPicker() {
@@ -61,7 +69,7 @@
     if (!profile) return;
     var url = profileUrl(profile);
 
-    TPL.TEMPLATES.forEach(function (template) {
+    TPL.all().forEach(function (template) {
       var variant = JSON.parse(JSON.stringify(profile));
       variant.card_settings = Object.assign({}, profile.card_settings, { template_id: template.id });
       var card = Card.buildCard(variant, { profileUrl: url, ecl: 'Q' });
@@ -70,7 +78,11 @@
         el('div', { class: 'panel-head' }, [
           el('h2', { text: template.name }),
           el('span', { class: 'hint', text: template.description }),
-          el('span', { class: 'badge badge-public', text: template.layout === 'centered' ? 'centred' : 'photo left' })
+          el('span', { class: 'badge badge-public', text: template.layout === 'centered' ? 'centred' : 'photo left' }),
+          template.community
+            ? el('span', { class: 'badge badge-muted',
+                text: 'contributed' + (template.author ? ' · ' + template.author : '') })
+            : null
         ]),
         el('div', { class: 'card-duo' }, [
           figure(card, 'front', 'Front'),
@@ -119,8 +131,56 @@
       (TPL.GEOMETRY.qrSizeMm / qr.size).toFixed(2) + ' mm per module';
   }
 
+  /** How many contributed templates arrived, and whether the folder is missing. */
+  function reportCommunity() {
+    var note = $('community-count');
+    if (!note) return;
+    var list = TPL.community();
+    if (!list.length) {
+      note.textContent = 'None yet — the folder is empty or has no manifest.';
+      return;
+    }
+    note.textContent = list.length + ' loaded · ' +
+      list.map(function (t) { return t.name + (t.author ? ' by ' + t.author : ''); }).join(', ');
+  }
+
   function boot() {
-    Promise.all(candidates.map(function (username) {
+    // Discover the example profiles from their manifest: a static site cannot list
+    // a directory, and hardcoding names here would break the moment someone adds
+    // a fixture.
+    Store.listProfiles().then(function (summaries) {
+      candidates = summaries.map(function (s) { return s.username; });
+      if (!candidates.length) {
+        $('templates').appendChild(el('div', { class: 'notice notice-warn' }, [
+          el('div', { html: 'No example profiles found. Run ' +
+            '<code>node tools/build-links.js --data examples --manifest-only</code> to rebuild ' +
+            '<code>examples/index.json</code>.' })
+        ]));
+      }
+      return loadAll();
+    }).catch(function (err) {
+      $('templates').appendChild(el('div', { class: 'notice notice-danger' }, [
+        el('div', { html: 'Could not read the examples: ' + escapeText(String(err && err.message || err)) +
+          '. Serve this folder over http — see <a href="../SETUP.md">SETUP.md</a>.' })
+      ]));
+    });
+  }
+
+  function escapeText(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function loadAll() {
+    // Contributed templates first: renderTemplates() draws whatever is registered,
+    // so loading afterwards would leave the gallery missing a contribution until a
+    // reload. loadCommunity() never rejects, so a missing folder degrades quietly.
+    return TPL.loadCommunity(Store.rootRelative('card-templates/community/'))
+      .then(reportCommunity, reportCommunity)
+      .then(loadProfiles);
+  }
+
+  function loadProfiles() {
+    return Promise.all(candidates.map(function (username) {
       return Store.loadProfile(username).then(function (p) {
         if (!p) return null;
         var checked = Access.validateProfile(p);
@@ -131,7 +191,7 @@
       var available = candidates.filter(function (u) { return profiles[u]; });
       if (!available.length) {
         $('templates').appendChild(el('div', { class: 'notice notice-danger' }, [
-          el('div', { html: 'No demo profiles could be loaded. Serve this folder over http — see ' +
+          el('div', { html: 'No example profiles could be loaded. Serve this folder over http — see ' +
             '<a href="../SETUP.md">SETUP.md</a>.' })
         ]));
         return;

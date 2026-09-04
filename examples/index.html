@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Example profiles — QR Link Card</title>
+<meta name="description" content="The fixture profiles that ship with QR Link Card, with live links for each access tier: stranger, temporary token, expired token, approved follower.">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<!--
+  The examples gallery. These profiles are FIXTURES: they belong to the project,
+  not to you, and the test suite reads the same files. Your own cards live in
+  profile-data/ and are listed at the site root.
+
+  data-profile-dir points Store at this folder, so nothing here can read (or leak)
+  your real profiles.
+-->
+<body data-base-depth="1" data-profile-dir="../examples/" data-demo="1">
+
+<a class="sr-only" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">QR Link Card</a>
+  <nav>
+    <a href="../index.html">Cards</a>
+    <a href="../card-builder/">Builder</a>
+    <a href="../dashboard/">Dashboard</a>
+    <a href="../templates/">Templates</a>
+    <a href="../print/">Print</a>
+    <a href="./" aria-current="page">Examples</a>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="wrap">
+
+    <div class="dash-head">
+      <div>
+        <h1>Example profiles</h1>
+        <p class="muted small mb0">
+          Two fixture people, wired to the four ways one URL can behave. Open any scenario below and
+          watch the same profile show a different set of links — that is the whole idea of the project.
+        </p>
+      </div>
+      <div class="btn-row">
+        <a class="btn" href="../index.html">Your cards</a>
+        <a class="btn btn-ghost" href="../docs/ARCHITECTURE.md">How it works</a>
+      </div>
+    </div>
+
+    <div class="notice notice-warn mt2">
+      <strong>These are demonstrations, not enforcement.</strong>
+      <p class="small mb0">
+        In this static version the tier decision runs in your browser, and the private URLs are in the
+        JSON your browser just fetched — so a determined visitor could read them. It proves the UX and
+        the data model; the server-side version in
+        <a href="../docs/ARCHITECTURE.md">ARCHITECTURE.md</a> enforces it with the same
+        <code>resolveAccess()</code>. Never put a genuinely secret URL in a static profile.
+      </p>
+    </div>
+
+    <div id="examples" class="stack mt2">
+      <p class="muted">Loading the example profiles…</p>
+    </div>
+
+    <section class="panel mt2">
+      <div class="panel-head">
+        <h2>What the four scenarios mean</h2>
+      </div>
+      <dl class="kv">
+        <dt>Stranger</dt>
+        <dd>Scans the printed card. Public links only — up to
+          <strong id="limit-public">5</strong> on the free tier.</dd>
+        <dt>Temporary link</dt>
+        <dd>Got <code>?t=temp_…</code> from the owner. Public links plus the one private link that
+          token unlocks, until it expires or its use-count runs out.</dd>
+        <dt>Expired token</dt>
+        <dd>The same URL, later. It degrades to public — never a 404, never a leak.</dd>
+        <dt>Approved follower</dt>
+        <dd>Signed in and approved by the owner. Every link, including private ones.</dd>
+      </dl>
+      <p class="tiny muted mb0">
+        Fixture data lives in <code>examples/*.json</code> and is read by the test suite too, so what you
+        see here is what the tests assert. Copy one of these files into
+        <code>profile-data/</code>, rename it, and run <code>npm run build</code> to start from a
+        working example.
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="tiny muted">
+      QR Link Card — free and open source under MIT.
+      <a href="../README.md">What it is</a> · <a href="../SETUP.md">Deploy your own</a> ·
+      <a href="../CONTRIBUTING.md">Contribute a template</a>
+    </p>
+  </div>
+</footer>
+
+<script src="../lib/qr.js"></script>
+<script src="../card-templates/card-templates.js"></script>
+<script src="../lib/access.js"></script>
+<script src="../lib/store.js"></script>
+<script src="gallery.js"></script>
+</body>
+</html>

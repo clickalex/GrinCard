@@ -159,7 +159,8 @@ test('position gives every entry a unique, non-overlapping cell', () => {
 // ---------------------------------------------------------------------------
 
 test('singleSvg draws every dark module and sizes itself in mm', () => {
-  const url = 'https://clickalex.github.io/GrinCard/demo/profile.html?u=rahul123';
+  // The canonical printed URL shape: /c/<username>/, not a ?u= deep link.
+  const url = 'https://clickalex.github.io/GrinCard/c/rahul123/';
   const svg = Gen.singleSvg(url, { ecl: 'M', sizeMm: 25, quietZoneModules: 4 });
   const qr = QR.create(url, { ecl: 'M', margin: 0 });
   let dark = 0;
@@ -352,7 +353,7 @@ test('sheetPdf produces one page per layout page with a true paper box', { skip:
 });
 
 test('sheetPdf: a QR printed on the sheet scans back to its exact URL', { skip: !ORACLE.available ? ORACLE.INSTALL_HINT : false }, async () => {
-  const target = 'https://clickalex.github.io/GrinCard/demo/profile.html?u=rahul123&t=temp_demo_live';
+  const target = 'https://clickalex.github.io/GrinCard/c/rahul123/?t=temp_demo_live';
   const entries = Gen.parseList([
     'Card | ' + target,
     'Shop | https://instagram.com/shop',

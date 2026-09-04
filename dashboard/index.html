@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard — QR Link Card</title>
 <meta name="description" content="Edit your profile, manage public and private links, mint temporary links, approve followers, and download a print-ready QR card.">
-<link rel="stylesheet" href="../demo/assets/styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body data-base-depth="1">
@@ -28,7 +28,9 @@
     <a href="../index.html">Overview</a>
     <a href="../card-builder/">Builder</a>
     <a href="./" aria-current="page">Dashboard</a>
-    <a href="../demo/profile.html">Profile</a>
+    <a href="../profile/">Profile</a>
+    <a href="../templates/">Templates</a>
+    <a href="../print/">Print</a>
     <a href="../qr-generator/">QR tool</a>
     <a href="../docs/ARCHITECTURE.md">Docs</a>
   </nav>
@@ -147,11 +149,23 @@
         <div id="template-picker" class="template-picker"></div>
 
         <div class="field mt2">
-          <label for="f-profile-url">URL encoded in the QR</label>
-          <input type="url" id="f-profile-url" placeholder="https://your-domain/c/rahul123">
-          <p class="help">
-            This is the permanent URL printed on the card. It must be publicly reachable for a scan to work.
-            <button type="button" class="linklike" id="btn-auto-url">Use this site’s URL</button>
+          <label for="f-profile-url">Your permanent URL — what the QR encodes</label>
+          <div class="url-row">
+            <input type="text" id="f-profile-url" readonly spellcheck="false"
+                   aria-describedby="profile-url-help">
+            <button type="button" class="btn btn-sm" id="btn-copy-url">Copy</button>
+            <a class="btn btn-sm btn-ghost" id="btn-open-url" href="#" target="_blank" rel="noopener">Open</a>
+          </div>
+          <p class="help" id="profile-url-help">
+            Derived from where this site is served, so you never have to type it and a fork’s cards
+            point at the fork. Change your username and it follows.
+            <details class="advanced">
+              <summary>Use a custom domain instead</summary>
+              <input type="url" id="f-profile-url-override" class="mt1"
+                     placeholder="https://cards.example.com/c/you/">
+              <span class="help">Leave empty to keep the derived URL. An absolute URL here wins —
+                that is how you point a card at a domain you own.</span>
+            </details>
           </p>
         </div>
 

@@ -22,7 +22,8 @@
   var PX_PER_MM = 300 / 25.4;      // 300 DPI
 
   var EXAMPLES = {
-    profile: 'https://clickalex.github.io/GrinCard/demo/profile.html?u=rahul123',
+    // Filled in at click time from wherever this site is served — see profileExample().
+    profile: '',
     wifi: 'WIFI:T:WPA;S:Studio Guest;P:welcome2026;H:false;;',
     vcard: 'BEGIN:VCARD\nVERSION:3.0\nFN:Rahul Kumar\nTITLE:Freelance Illustrator\nTEL;TYPE=CELL:+91 98765 43210\nEMAIL:rahul@example.com\nURL:https://rahul.example\nEND:VCARD',
     upi: 'upi://pay?pa=rahul@okbank&pn=Rahul%20Kumar&am=250&cu=INR&tn=Illustration%20commission'
@@ -306,28 +307,53 @@
     Exporter.download(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), 'qr-sheet_page1.svg');
   }
 
-  /** Load the demo profiles so the sheet tool and the card tool share data. */
-  function loadDemoProfiles() {
-    var users = ['rahul123', 'meera9'];
-    var lines = [];
-    var pending = users.map(function (u) {
-      return fetch('../profile-data/' + u + '.json')
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .catch(function () { return null; })
-        .then(function (p) {
-          if (!p) { lines.push(u + ' | (profile not found)'); return; }
-          var base = location.origin + location.pathname.replace(/[^/]*$/, '') + '../demo/profile.html';
-          lines.push(p.display_name + ' — card | ' + base + '?u=' + u);
-          (p.links || []).forEach(function (l) {
-            if (l.visibility === 'public') lines.push(l.label + ' | ' + l.url);
-          });
+  /**
+   * The permanent URL for this deployment, for the "My profile URL" button.
+   *
+   * Derived, never hardcoded: whoever forked this gets their own link. Falls back
+   * to the first profile in profile-data/, then to a placeholder, so the button is
+   * never dead on an empty fork.
+   */
+  function profileExample() {
+    var last = Store.getLastUsername();
+    if (last) return Store.profileUrlFor(last);
+    return Store.listProfiles().then(function (list) {
+      var real = list.filter(function (p) { return !p._starter; })[0];
+      var pick = real || list[0];
+      return pick ? Store.profileUrlFor(pick.username) : Store.siteRoot() + 'c/yourname/';
+    }).catch(function () { return Store.siteRoot() + 'c/yourname/'; });
+  }
+
+  /**
+   * Build a print sheet from this deployment's own profiles: the permanent card URL
+   * plus its public links. Private links are deliberately excluded — a sheet is
+   * paper, and paper cannot be revoked or expired.
+   */
+  function loadYourProfiles() {
+    Store.listProfiles().then(function (summaries) {
+      if (!summaries.length) {
+        alert_('s-alerts', 'No profiles in profile-data/ yet. Add one, run npm run build, then try ' +
+          'again — or load the example list.', 'warn');
+        return null;
+      }
+      return Promise.all(summaries.map(function (s) { return Store.loadProfile(s.username); }));
+    }).then(function (profiles) {
+      if (!profiles) return;
+      var lines = [];
+      profiles.filter(Boolean).forEach(function (p) {
+        lines.push((p.display_name || p.username) + ' — card | ' + Store.profileUrlFor(p.username, p));
+        (p.links || []).forEach(function (l) {
+          if (l.visibility === 'public') lines.push(l.label + ' | ' + l.url);
         });
-    });
-    Promise.all(pending).then(function () {
-      $('q-list').value = '# Generated from profile-data/ — public links only.\n' + lines.join('\n');
+      });
+      $('q-list').value = '# Generated from profile-data/ — card URLs and public links only.\n' +
+        '# Private links are never printed: paper cannot be revoked or expired.\n' +
+        lines.join('\n');
       writeStore(LS_LIST, $('q-list').value);
       renderSheet();
-      alert_('s-alerts', 'Loaded ' + lines.length + ' codes from the demo profiles.');
+      alert_('s-alerts', 'Loaded ' + lines.length + ' codes from your profiles.');
+    }).catch(function (err) {
+      alert_('s-alerts', 'Could not read profile-data/: ' + String(err && err.message || err), 'danger');
     });
   }
 
@@ -371,6 +397,18 @@
     if (params.get('url')) $('q-text').value = params.get('url');
     if (params.get('mode') === 'sheet') state.mode = 'sheet';
 
+    // With nothing in the address bar and nothing saved, start from this
+    // deployment's own profile URL rather than an empty box: the most common thing
+    // a person wants a QR of is the link they are about to print, and a tool that
+    // opens blank looks broken. Derived, so a fork gets its own URL.
+    if (!$('q-text').value.trim() && !params.get('url')) {
+      Promise.resolve(profileExample()).then(function (url) {
+        if ($('q-text').value.trim()) return;   // do not clobber what they typed
+        $('q-text').value = url;
+        renderSingle();
+      });
+    }
+
     ['q-text', 'q-ecl', 'q-size', 'q-quiet', 'q-color', 'q-bg'].forEach(function (id) {
       $(id).addEventListener('input', function () { renderSingle(); persistOptions(); });
       $(id).addEventListener('change', function () { renderSingle(); persistOptions(); });
@@ -386,7 +424,17 @@
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-example]'), function (btn) {
       btn.addEventListener('click', function () {
-        $('q-text').value = EXAMPLES[btn.getAttribute('data-example')];
+        var key = btn.getAttribute('data-example');
+        if (key === 'profile') {
+          // Resolved live so the button reflects the profiles that exist here.
+          Promise.resolve(profileExample()).then(function (url) {
+            $('q-text').value = url;
+            renderSingle();
+            persistOptions();
+          });
+          return;
+        }
+        $('q-text').value = EXAMPLES[key];
         renderSingle();
       });
     });
@@ -414,7 +462,7 @@
       writeStore(LS_LIST, DEMO_LIST);
       renderSheet();
     });
-    $('q-load-profiles').addEventListener('click', loadDemoProfiles);
+    $('q-load-profiles').addEventListener('click', loadYourProfiles);
     $('q-clear').addEventListener('click', function () {
       $('q-list').value = '';
       writeStore(LS_LIST, '');

@@ -130,7 +130,28 @@ something a human just typed. `Store.loadProfile()` also records where the resul
 (`_source: 'repo' | 'local'`), and the dashboard shows that in its subtitle so you are never
 unsure which one you are looking at.
 
-The same pattern applies to `profile-data/tokens.json`, which is merged with
+### Two things a static host cannot do
+
+**It cannot list a directory.** So `tools/build-links.js` writes `index.json` beside the
+profiles, and `Store.listProfiles()` reads that. `npm run build` regenerates it, `npm run
+validate` fails if it is stale, and the Pages workflow regenerates it on deploy. Forgetting it is
+therefore a cosmetic problem — the index page does not list the new person — and never a broken
+link, because `/c/<username>/` loads `<username>.json` by name.
+
+**It cannot rewrite a URL.** So the permanent address a card prints, `/c/<username>/`, is a real
+file: a generated ~14-line stub that runs the same renderer as `profile/`. Stubs are gitignored
+(they are derived, and a renamed profile should not leave a stale URL behind), and `404.html`
+boots the same renderer for any path — see §4b.
+
+### Two data directories, deliberately separate
+
+`profile-data/` is yours: it ships one starter profile (`yourname.json`) and is what the site
+root, the dashboard and your printed cards read. `examples/` belongs to the project: fixture
+people with fixture tokens, used by `examples/` and `templates/` for previews and by the test
+suite as assertions. A page chooses between them with `<body data-profile-dir>`, which is also
+why a public gallery can never render the owner's private links.
+
+The same pattern applies to `examples/tokens.json`, which is merged with
 `localStorage['qrlinkcard.v1.tokens.<username>']`. Tokens that came from the repo are marked
 `_remoteTokens` and shown read-only in the dashboard: you cannot revoke a file that lives in
 git from a browser, and pretending otherwise would silently copy the token into
@@ -148,6 +169,43 @@ qrlinkcard.v1.qrgen.options          the QR generator's settings
 ```
 
 `Store.clearLocal()` wipes all of them; the dashboard has a button for it.
+
+---
+
+## 4b. Nothing knows where it is deployed
+
+This repository is a template, so the most important architectural rule is not about cards: **no
+file may contain a deployment URL.** Not a domain, not a repository name, not a directory depth.
+
+The alternative is a fork that has to edit its own URLs — which means a person editing config they
+do not understand, and the failure mode is a printed QR code that opens someone else's website.
+That is unrecoverable, because the card is already in a wallet.
+
+So the deployment root is *derived*:
+
+```
+Store.siteRoot()          reads the URL of its own <script> tag
+                          (this file is always <root>/lib/store.js)
+        ↓
+Store.profileUrlFor(u)    <root>/c/<username>/   ← what a QR encodes
+Store.rootRelative(p)     '../' × depth + p      ← every in-page link
+```
+
+Three consequences worth knowing:
+
+1. **One renderer, three hosts.** `profile/profile.js` renders entirely into `#profile-root` from
+   JSON, so `profile/boot.js` can hand it a chrome and a username from anywhere: `/profile/?u=x`,
+   a generated `/c/x/` stub, or `404.html` at an arbitrary depth. Nothing in the renderer knows
+   which host it is running under.
+2. **`404.html` is part of the architecture, not an error page.** A static host serves it for a
+   missing path while keeping the requested URL in the address bar. It cannot know its own depth in
+   advance, so it *probes* for a file that always exists (`lib/store.js`) at increasing depths and
+   uses the first hit — then boots the renderer in place. No redirect, so the URL a person scanned
+   is the URL they see. This is what makes a plain branch deploy work with no build step at all.
+3. **An override exists and is narrow.** An absolute `profile_url` in a profile, or
+   `<body data-site-root>`, wins over derivation — that is how someone points a card at a domain
+   they own. A *relative* `profile_url` is ignored, because honouring one is how a copied fixture
+   produces a card pointing at the wrong site.
 
 ---
 
@@ -201,9 +259,20 @@ transpiler, no `node_modules` at runtime.
 | `lib/card.js` | `Card` | profile + template → display list → SVG | `CardTemplates`, `QRCode` |
 | `lib/pdf.js` | `PdfCard` | display list → vector PDF 1.4 (photos, gradients, bleed) | `Card` |
 | `lib/pdfdoc.js` | `SimplePdf` | generic PDF writer: any page size, rects, text | nothing |
-| `lib/store.js` | `Store` | fetch `profile-data/*.json`, merge `localStorage` | `AccessRules` |
+| `lib/store.js` | `Store` | derive the deployment root; fetch profile JSON; merge `localStorage` | `AccessRules` |
 | `lib/export.js` | `Exporter` | SVG/PNG/PDF download, photo embedding, clipboard | `Card`, `PdfCard`, `CardTemplates` |
 | `qr-generator/generator.js` | `QrGenerator` | batch QR, paper layout, sheet SVG + PDF | `QRCode`, `SimplePdf` |
+| `profile/boot.js` | `ProfileBoot` | resolve the username and build the chrome at any depth | `Store` |
+| `profile/profile.js` | `ProfileRender` | the profile renderer itself | `Store`, `AccessRules`, `CardTemplates` |
+| `card-templates/community/*.js` | — | contributed templates; self-register on load | `CardTemplates` |
+
+Node-only, and not part of the shipped site:
+
+| File | Responsibility |
+| --- | --- |
+| `tools/build-links.js` | profile JSON → manifests, the `/c/` directory page, per-username stubs |
+| `tools/build-templates.js` | validate contributions, keep the community manifest in sync |
+| `tools/check-links.js` | every internal link in every page and document resolves |
 
 Dependency arrows point one way and there are no cycles. `qr.js`, `access.js` and
 `card-templates.js` know nothing about the DOM, which is why they can be tested in plain Node
@@ -222,13 +291,21 @@ products — stickers, tent cards, badge inserts.
 
 | Page | Reads | Writes |
 | --- | --- | --- |
-| `demo/profile.html` | `?u`, `?t`, `?viewer`, profile JSON, registry | `lastUsername` only |
-| `dashboard/index.html` | `?u` or `lastUsername` | profile, tokens, followers in `localStorage` |
-| `card-builder/index.html` | `?u` or `lastUsername`, or sensible defaults | `lastUsername`; offers a JSON download |
-| `demo/print-sheet.html` | `?u` or `lastUsername` | nothing |
-| `demo/card-preview.html` | `?u` (defaults to `rahul123`) | nothing |
-| `qr-generator/index.html` | `?url`, `?mode`, saved batch | its own list and options |
-| `index.html` | every file in `profile-data/` for the showcase | nothing |
+| `index.html` | `profile-data/index.json` + each profile | nothing |
+| `c/<username>/` | that profile + registry (generated stub) | `lastUsername` only |
+| `c/` | the manifest (generated directory page) | nothing |
+| `profile/` | `?u`, `?t`, `?viewer`, profile JSON, registry | `lastUsername` only |
+| `404.html` | the requested path, then the profile it names | `lastUsername` only |
+| `dashboard/` | `?u` or `lastUsername` | profile, tokens, followers in `localStorage` |
+| `card-builder/` | `?u` or `lastUsername`, or the starter defaults | `lastUsername`; offers a JSON download |
+| `print/` | `?u`, `lastUsername`, or the first real profile | nothing |
+| `templates/` | `examples/` fixtures + every registered template | nothing |
+| `examples/` | `examples/*.json` including tokens | nothing |
+| `qr-generator/` | `?url`, `?mode`, saved batch, your profiles | its own list and options |
+
+No page defaults to a hardcoded fixture username any more. Where a page needs "someone", it asks
+the manifest for the first profile that is not the starter — so on a fork it lands on the fork's
+own person.
 
 The profile page is deliberately the only one that a stranger ever loads, and it is the only
 one that must be fast and correct on a mid-range Android phone over mobile data. It fetches
@@ -240,8 +317,8 @@ one JSON file, renders, and does no writing beyond remembering which profile you
 
 **V1 proves the user experience. It does not enforce privacy.**
 
-When a visitor opens `demo/profile.html?u=rahul123`, their browser downloads
-`profile-data/rahul123.json`. That file contains *every* link, including the
+When a visitor opens `profile/?u=rahul123`, their browser downloads
+`examples/rahul123.json`. That file contains *every* link, including the
 `followers_only` ones, because in V1 the file is static and there is no server to filter it.
 The tier logic then decides what to **render**. A visitor who opens their browser's devtools
 can read what was not rendered.
@@ -314,7 +391,7 @@ card-templates/card-templates.js   template-1: { background: {from: '#141428', t
         │
         ├──► Card.buildCard()   → the printed card
         └──► CardTemplates.toCssVars()  → :root { --bg: #141428; --accent: #f2b134; … }
-                                          consumed by demo/assets/styles.css
+                                          consumed by assets/styles.css
 ```
 
 Change a template's accent colour and the card, the profile page, the tier banner and the
@@ -365,7 +442,7 @@ of code in exchange for zero indirection.
 
 ## 11. Testing strategy
 
-Five suites, 126 tests, no browser required:
+Six suites, 168 tests, no browser required:
 
 | Suite | What it proves |
 | --- | --- |
@@ -373,11 +450,12 @@ Five suites, 126 tests, no browser required:
 | `tests/card.test.js` | The display list is correct; the SVG is well formed; the PDF parses in `pdfjs-dist`; **a QR rendered from the PDF at 300 DPI decodes with `jsQR` to the exact profile URL** |
 | `tests/access.test.js` | Every tier transition, every token failure reason, validation and limits |
 | `tests/generator.test.js` | Batch parsing, paper layout, quiet zones, sheet PDF; **printed sheet codes decode back to their exact URLs** |
-| `tests/dom.test.js` | Every page, executed in `jsdom` with real scripts and real events: all four visitor scenarios, saving, minting, revoking, approving, exporting, plus static checks that no page references a missing file or a CDN, that every `getElementById` in a page script exists in its HTML, and that the nine globals do not collide |
+| `tests/dom.test.js` | Every page, executed in `jsdom` with real scripts and real events: all four visitor scenarios, saving, minting, revoking, approving, exporting, the generated stub and the `404.html` fallback booting the real renderer, deployment-root discovery at every depth and under a `/<repo>/` prefix, plus static checks that no page references a missing file or a CDN, that every `getElementById` in a page script exists in its HTML, and that the nine globals do not collide |
+| `tests/tools.test.js` | The generators: profile → stub/manifest correctness, the username-must-match-filename rule, a registry never published as a person, stale-manifest detection, idempotency, template validation and registration, link checking, and a guard against references to the pre-fork layout |
 
 The oracles live **outside** the repository (`/tmp/oracle`, or `$QR_ORACLE_DIR`; see
 `tests/oracle.js`) and the suites that need them skip with an install hint rather than crashing,
-so `npm test` on a fresh clone passes 58 and skips 68 in under a second instead of failing. A
+so `npm test` on a fresh clone passes 87 and skips 81 instead of failing. A
 project whose premise is having no dependencies should not acquire them through its test setup.
 
 The two round-trip tests are the ones that matter most. Rendering our own PDF with an
@@ -390,3 +468,19 @@ asserting would find.
 the real page scripts against the real HTML with a file-backed fetch, so it catches the bugs
 that actually ship: a typo in an element id, a script path that 404s, a click handler that
 throws. It cannot rasterise, so anything involving canvas is covered by the PDF tests instead.
+
+Three details of the harness are load-bearing rather than incidental, because each one was added
+after it hid a real bug:
+
+- **Polyfills are installed in `beforeParse`.** `404.html` boots from an *inline* script, which
+  jsdom executes while constructing the DOM. Patching `window.fetch` afterwards would leave that
+  page running without it — testing a different environment than a browser gives it.
+- **Relative fetches resolve against the requested URL**, not the origin. That is what lets
+  `404.html`'s base probe be tested honestly: it asks for `./lib/store.js`, then `../`, then
+  `../../`, and the harness has to answer the way a server would.
+- **A `deployBase` option serves the repo under a prefix**, so a GitHub Pages *project* site
+  (`/<repo>/…`) is tested rather than assumed. Relative-path bugs only show up at depth.
+
+CI also runs `npm run validate` and `node tools/check-links.js`, which together assert that the
+generated files match the repository and that no page or document links to something that moved.
+For a template that people restructure, those two catch more real breakage than any unit test.

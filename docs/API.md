@@ -116,7 +116,8 @@ Change these and every card, preview and print sheet in the project follows. See
 
 ### `CardTemplates.TEMPLATES`
 
-An array of template objects. Each has:
+The **built-in** templates, as an array. Contributed ones live in a separate list and are
+reachable through `all()` — see [Contributed templates](#contributed-templates). Each has:
 
 ```js
 {
@@ -147,11 +148,12 @@ pure data and needs no renderer changes. Adding a genuinely new layout means add
 ### `CardTemplates.get(id) → template`
 
 Returns the template, or the first one if `id` is unknown. Never throws — a typo in a JSON file
-should not produce a blank card.
+should not produce a blank card. Falls back to `template-1` for a contributed id that failed to
+load, so a broken contribution degrades to a working card rather than a blank one.
 
 ### `CardTemplates.toCssVars(template, profile?) → object`
 
-Maps a template onto the CSS custom properties that `demo/assets/styles.css` consumes:
+Maps a template onto the CSS custom properties that `assets/styles.css` consumes:
 
 ```js
 CardTemplates.toCssVars(CardTemplates.get('template-1'))
@@ -169,14 +171,57 @@ rounder corner radius automatically.
 The profile page applies the result to `:root`, which is why a Midnight card produces a Midnight
 web page with no second colour palette to maintain.
 
+### Contributed templates
+
+A template is one file. Nothing in `card-templates.js` changes when someone adds one, which is
+the difference between a project people can contribute to and one they have to fork. See
+[docs/TEMPLATES.md](TEMPLATES.md) for the authoring guide.
+
+```js
+CardTemplates.register(template)      // → template, or null if rejected (never throws)
+CardTemplates.validateTemplate(t)     // → { ok, errors[], warnings[] }
+CardTemplates.loadCommunity(baseUrl)  // → Promise<template[]> of what was added
+CardTemplates.community()             // the contributed ones, in load order
+CardTemplates.resetCommunity()        // unregister them all (tests, gallery reload)
+```
+
+`register()` marks the template `community: true` so the UI can label it, and is idempotent —
+loading the same file twice adds it once.
+
+`loadCommunity(baseUrl)` fetches `<baseUrl>/index.json` and injects each listed file as a
+`<script>`, **in order**, letting each self-register. Order matters: two files racing to register
+would produce a nondeterministic picker. It resolves to `[]` and **never rejects** when there is
+no fetch, no manifest, or a broken file — a missing community folder must not break a card. Call
+it before rendering anything that reads a template, which is what `profile/boot.js`,
+`card-builder/builder.js`, `templates/gallery.js` and `print/print-sheet.js` all do.
+
+`validateTemplate()` is the same check `tools/build-templates.js` runs in CI. It returns errors
+for anything that would produce a broken or unscannable card, and warnings for advice:
+
+| Rule | Level | Why |
+| --- | --- | --- |
+| `id` lowercase and unique across core **and** community | error | shadowing a built-in silently changes cards someone already printed |
+| `name` present, `layout` is `photo-left` or `centered` | error | the renderer branches on `layout` |
+| every `front.*` / `back.*` colour and size field present | error | the display list has no defaults to fall back on |
+| `background.type` is `solid` or `gradient`, with the fields that implies | error | — |
+| `back.qrTile` is a **light** colour | error | inverted QR codes fail on a large fraction of phone cameras |
+| `photoShape` is `circle` or `round` | warning | anything else is drawn as `round` |
+| `free: false` | warning | recorded, but nothing is gated on it — the core is free |
+| `author` missing | warning | shown in the gallery |
+
 ### Also exported
 
 ```js
-CardTemplates.ids()          // ['template-1', 'template-2', 'template-3']
+CardTemplates.all()          // every template: built-ins first, then contributed
+CardTemplates.ids()          // their ids, in the same order
+CardTemplates.LAYOUTS        // ['photo-left', 'centered']
 CardTemplates.isLight(hex)   // true for backgrounds that need dark text on top
 CardTemplates.SANS           // the system sans stack, as one string
 CardTemplates.SERIF          // the serif stack
 ```
+
+Use `all()` in any UI that lists templates. `TEMPLATES` is the built-in array only, and picking
+it by hand is how a contribution ends up invisible in one picker and visible in another.
 
 ---
 
@@ -268,7 +313,7 @@ implements approve/reject/remove by writing the status and an `approved_at` time
 
 ```js
 AccessRules.sortedLinks(profile)         // links ordered by `order`, then by array position
-AccessRules.isPrivate(link)              // visibility === 'followers_only'
+AccessRules.isPrivate(link)              // visibility !== 'public'  (fails closed)
 AccessRules.isLinkVisible(link, tier, tokenVerdict)
   // public      → visible to everyone
   // temporary   → public, plus the single link the verdict unlocks
@@ -286,7 +331,10 @@ AccessRules.validateRegistry(raw)  // → { tokens: [], followers: [] }
 messages, so a hand-edited JSON file with a missing `id` still renders. Hard errors:
 `username` not matching `/^[a-z0-9_.-]{3,32}$/i`, missing `display_name`, `links` not an array,
 a link with no `url`, duplicate link ids, and more public links than `LIMITS.maxPublicLinks`.
-Warnings: a URL with no scheme, an unknown `visibility` (defaulted to public), a missing label.
+Warnings: a URL with no scheme, a missing label, and an unknown `visibility`.
+
+An unknown `visibility` is normalised to `followers_only`, not `public`. Only an exact
+`"public"` is ever public — see the rule below.
 
 `validateRegistry` returns only `{ tokens, followers }` — it drops every other key. That is
 deliberate (unknown fields should not survive a round-trip), but it means callers that attach
@@ -465,27 +513,82 @@ multiply millimetres by `PT_PER_MM`.
 
 ## Store
 
-Bridges the static JSON files and `localStorage`. Browser-only.
+Bridges the static JSON files and `localStorage` — and answers the question every page needs
+but no page should have to be told: *where is this site?* Browser-only.
 
 ```js
 Store.KEY_PREFIX      // 'qrlinkcard.v1.'
-Store.dataDir()       // '../profile-data/' relative to the current page
-Store.pageRelative('../demo/profile.html')
-                      // resolves from the page, handling directory URLs like /card-builder/
 ```
 
-`pageRelative` exists because `location.pathname` for `/card-builder/` has no filename to
-replace, and getting this wrong produces a QR code pointing at `/card-builder/profile.html`.
+### Deployment discovery
+
+```js
+Store.siteRoot()                    // 'https://you.github.io/repo/'  (always ends in '/')
+Store.basePath()                    // '/repo/'
+Store.rootRelative('docs/API.md')   // '../docs/API.md' from a page one level down
+Store.profileUrlFor('rahul')        // 'https://you.github.io/repo/c/rahul/'
+Store.setSiteRoot(url)              // test hook; pass null to clear
+```
+
+`siteRoot()` is derived, not configured. It reads the URL of its own `<script>` tag — this file
+always lives at `<site root>/lib/store.js`, so stripping that suffix gives the root at any depth,
+on any host, with no build step. Resolution order:
+
+1. `<body data-site-root="https://cards.example.com">` — an explicit override, for the rare case
+   where the canonical URL is not the URL being served.
+2. The script's own URL.
+3. Walking up from `location.pathname`, using `<body data-base-depth="N">` if present.
+
+This is what makes the repository safe to fork: a fork's cards point at the fork, a move to a
+custom domain changes nothing, and a project page served from `/<repo>/` works the same as a user
+page served from `/`. **Nothing in this project may hardcode a deployment URL** — see
+`profileUrlFor()`.
+
+`rootRelative(path)` expresses a site-root-relative path from the current page's directory, which
+is what every in-page link should use. It is depth-aware, so the same renderer works from
+`/profile/`, from a generated `/c/<username>/` stub, and from `404.html` at an arbitrary depth.
+`pageRelative(path)` is the older, simpler helper: it joins onto the page's own directory without
+climbing to the root, and is still used where that is what is wanted.
+
+```js
+Store.profileUrlFor(username, profile?)
+```
+
+The permanent, printable URL for a profile: `<site root>/c/<username>/`. An **absolute**
+`profile.profile_url` wins over the derived value — that is the custom-domain escape hatch. A
+relative or empty `profile_url` is ignored, because honouring one would let a copied fixture
+silently produce a card that points at someone else's site. Returns `''` for no username.
+
+### Data directory
+
+```js
+Store.dataDir()       // '../profile-data/' relative to the current page
+```
+
+`<body data-profile-dir="../examples/">` repoints it. That is how `templates/` and `examples/`
+render the shipped fixtures instead of the owner's real profiles — a public gallery must not
+print someone's private links into a page anyone can open. `tools/build-links.js --data <dir>`
+generates the manifest for the same directory.
 
 ### Profiles
 
 | Call | Returns |
 | --- | --- |
-| `listProfiles()` | `Promise<string[]>` — usernames found in `profile-data/` |
+| `listProfiles()` | `Promise<summary[]>` — one per profile in the data directory |
 | `loadProfile(username)` | `Promise<profile \| null>` — local override if present, else the repo file |
 | `saveProfile(profile)` | `Promise<profile>` — validates, then writes to `localStorage` |
 | `hasLocalProfile(username)` | `boolean` |
 | `deleteLocalProfile(username)` | — |
+
+Each summary is `{ username, display_name, designation, tagline, theme, link_count, url,
+_starter }`, where `url` is the derived `profileUrlFor()` value and `_starter` marks the
+untouched profile a fork ships with (the site root uses it to decide whether to show setup help).
+
+A static site cannot list a directory, so `listProfiles()` reads `profile-data/index.json` — a
+manifest `tools/build-links.js` writes, `npm run validate` checks, and the Pages workflow
+regenerates on deploy. A stale manifest means the index page does not list a new person; it never
+breaks `/c/<username>/`, because that loads `<username>.json` by name. If the manifest is missing,
+`listProfiles()` resolves to `[]` rather than rejecting.
 
 `loadProfile` sets `_source` to `'repo'` or `'local'` and records `lastUsername`, so a page can
 say where its data came from and open the same profile next time.
@@ -512,6 +615,77 @@ Store.clearLocal()                           // wipe them all
 
 All `localStorage` access is wrapped in `try/catch`: private-browsing modes that throw on
 write must not break the page, they just make edits non-persistent.
+
+---
+
+## Tools
+
+Node scripts, not part of the shipped site. Each exports its internals so the test suite can
+exercise them without spawning a process, and each returns a process exit code from `main()`.
+
+### `tools/build-links.js`
+
+Turns profile JSON into permanent URLs.
+
+```bash
+node tools/build-links.js                  # profile-data/ -> manifests + c/<username>/ stubs
+node tools/build-links.js --check          # CI: fail if a committed manifest is stale
+node tools/build-links.js --clean          # remove generated stubs
+node tools/build-links.js --data examples --manifest-only   # a fixture set, no stubs
+node tools/build-links.js --data DIR --out DIR --quiet
+```
+
+```js
+const { main, readProfiles, stubHtml, manifest, directoryHtml, args } = require('./tools/build-links.js');
+readProfiles(dir)          // → { profiles: [{ file, username, json }], errors: string[] }
+stubHtml(username, name)   // → the ~14-line host page for /c/<username>/
+manifest(profiles)         // → the index.json object
+directoryHtml(profiles)    // → the /c/ listing page
+```
+
+`readProfiles()` is strict about the things that silently break a printed card: the filename must
+be a valid username, it must equal the `username` field inside (the URL is `/c/<filename>/`), and
+the JSON must parse. It skips `index.json`, `tokens.json`, `followers.json` and `_`-prefixed
+files, so a registry beside the profiles is never published as a person called "tokens".
+
+`main()` also removes stubs for profiles that no longer exist — a deleted profile must not leave a
+working URL behind.
+
+### `tools/build-templates.js`
+
+Validates contributed templates and keeps `card-templates/community/index.json` in sync.
+
+```bash
+node tools/build-templates.js           # validate, then write the manifest
+node tools/build-templates.js --check   # CI: fail if invalid, or if the manifest is stale
+node tools/build-templates.js --json
+```
+
+Validation is `CardTemplates.validateTemplate()` plus two checks that need the whole folder: ids
+must be unique across files, and every manifest entry must point at a file that exists.
+`generated_at` is ignored when comparing, so an unchanged folder does not look dirty in CI.
+
+### `tools/check-links.js`
+
+Asserts that every internal link in every page **and every markdown document** resolves to a file
+that exists.
+
+```bash
+node tools/check-links.js           # report; exit 1 on a broken link
+node tools/check-links.js --json
+node tools/check-links.js --strict  # also fail if generated stubs are missing
+```
+
+```js
+const { main, extractLinks, stripScripts, resolveTarget, isExternal, linkableFiles } =
+  require('./tools/check-links.js');
+```
+
+Two deliberate choices. `<script>` bodies and fenced code blocks are blanked out before scanning,
+because an attribute regex cannot tell a real reference from a string being concatenated — false
+positives are how a check like this gets ignored. And a link into `c/<username>/` whose stub is
+missing but whose profile exists is reported as a *notice*, not an error: the stubs are generated
+at deploy time and `404.html` serves the path either way, so a fresh clone must pass CI.
 
 ---
 
@@ -680,13 +854,27 @@ commands rather than 1681 rectangles.
 ```
 
 `tagline` is read from the top level first and `card_settings.tagline` second, so either works.
-`visibility` is `"public"` or `"followers_only"`. `order` is 1-based; links are rendered in that
+`visibility` is `"public"` or `"followers_only"`.
+
+**The check fails closed.** `AccessRules.isLinkVisible()` returns true at the public tier only
+for an exact `"public"`. Anything else — `"private"`, `"PRIVATE"`, `"followers-only"` with a
+hyphen, a missing field, `null` — is treated as `followers_only`, so it stays hidden from a
+stranger and still appears for an approved follower or a matching token.
+
+This is deliberate, and it was not always so. The rule used to read "not `followers_only` means
+public", and the shipped starter profile said `"visibility": "private"` — a value the enum never
+contained — so the link labelled *Pricing (private)* was published to everyone who scanned the
+card. Two independent defects, one visible failure, and the asymmetry is what decides it: failing
+closed costs a missing link the owner notices on their own page; failing open publishes a private
+link permanently, on a URL that is printed and cannot be taken back.
+
+`order` is 1-based; links are rendered in that
 order regardless of how they are arranged in the array.
 
 Keys beginning with `_` (`_source`, `_comment`, `_note`) are internal or documentation and are
 stripped on export.
 
-### Registry — `profile-data/tokens.json`
+### Registry — `examples/tokens.json`
 
 ```jsonc
 {

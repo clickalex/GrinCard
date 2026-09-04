@@ -1,116 +1,179 @@
 # Setup
 
-Three ways to run this, from "thirty seconds" to "my own domain with clean `/c/username`
-URLs". Pick the one you need; they all use the same files.
+Deploying your own copy takes about five minutes and needs nothing but a GitHub account.
+There is no server to run, no database to provision, no dependency to install and no build
+toolchain — the site is plain HTML, CSS and JavaScript, and the only "build" is a script that
+writes the small files your printed URLs need.
+
+1. [On your own computer](#1-on-your-own-computer-30-seconds)
+2. [Make it yours](#2-make-it-yours)
+3. [On GitHub Pages](#3-on-github-pages)
+4. [How `/c/username/` works](#4-how-cusername-works)
+5. [Other hosts](#5-other-hosts)
+6. [Adding more people](#adding-more-people)
+7. [Custom domain](#custom-domain-and-https)
+8. [Verifying a deployment](#verifying-a-deployment)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## 1. On your own computer (30 seconds)
 
-You need nothing but a static file server. Any of these work:
+```bash
+git clone https://github.com/YOU/GrinCard.git
+cd GrinCard
+npm run build          # writes your profile links (needs Node, nothing else)
+npm start              # python3 -m http.server 8080
+```
+
+Open <http://localhost:8080/>. That is the whole installation.
+
+`npm run build` and `npm start` are conveniences, not requirements. You can serve the folder
+with anything (`npx serve .`, `php -S localhost:8080`, your editor's live server) and the site
+works; the build only generates the files described in
+[§4](#4-how-cusername-works), and `404.html` covers them if you never run it.
+
+Do **not** open `index.html` by double-clicking it. Pages fetch JSON, and browsers block that
+over `file://`. Serve it over http, even locally.
+
+---
+
+## 2. Make it yours
+
+The fork ships with one starter profile so nothing is blank. Turn it into yours:
 
 ```bash
-cd GrinCard
-python3 -m http.server 8080        # Python 3
-npx serve .                        # Node
-php -S localhost:8080              # PHP
+mv profile-data/yourname.json profile-data/rahul.json
 ```
 
-Then open <http://localhost:8080/>.
+Then edit `profile-data/rahul.json`:
 
-> **Do not open `index.html` by double-clicking it.** The `file://` protocol blocks
-> `fetch()` between files in most browsers, so the pages would load but show no data. A
-> local server takes one command and removes the whole class of problem.
+- `"username"` **must match the new filename** — the URL is derived from it, and
+  `tools/build-links.js` refuses to generate a mismatch.
+- `display_name`, `designation`, `tagline` — the front of the card.
+- `links[]` — each with `label`, `url` and `"visibility"`, which is either `"public"` or
+  **`"followers_only"`**. Public links show to anyone; `followers_only` ones appear only for a
+  valid temporary token or an owner-approved follower.
+
+  The spelling matters and there is no third option. Any other word — `"private"`,
+  `"followers-only"`, `"hidden"` — is treated as `followers_only` and stays hidden, because
+  guessing wrong in the permissive direction would publish something you meant to hide on a card
+  you cannot recall. `npm run validate` warns about it.
+- `card_settings.template_id` — see [templates/](templates/) for what is available.
+- Delete `"_starter": true` when you are done. It is only how the site knows to show you setup
+  help instead of treating the profile as finished.
+
+Regenerate and look:
+
+```bash
+npm run build
+npm start
+```
+
+`http://localhost:8080/` now lists your card with its permanent URL, a copy button and a QR
+code. **You never type that URL** — it is derived from where the site is being served, so it is
+already correct for your fork, and it stays correct if you move to a custom domain.
+
+Prefer a form? Open [`dashboard/`](dashboard/) or [`card-builder/`](card-builder/): they edit
+the same data, preview live, and export the JSON file to commit.
 
 ---
 
-## 2. On GitHub Pages (5 minutes)
+## 3. On GitHub Pages
 
-This is the intended deployment. It is free, it gives you HTTPS, and the URLs it produces
-work with the QR codes you print.
+### Recommended — deploy with the included workflow
 
-### Option A — publish from the repository root
+`.github/workflows/pages.yml` regenerates your links on every push and publishes the result.
 
-1. Fork or clone this repository, then push it to **your** GitHub account.
-2. In your repository: **Settings → Pages**.
-3. Under **Build and deployment**, set *Source* to **Deploy from a branch**.
-4. Set *Branch* to `main` and the folder to `/ (root)`. Save.
-5. Wait about a minute. Your site is at
-   `https://<your-username>.github.io/<repo-name>/`.
+1. Push your fork to GitHub.
+2. **Settings → Pages → Build and deployment → Source → GitHub Actions.**
+   (The workflow tries to enable this for you on the first run, but the setting is yours to
+   confirm.)
+3. Push to `main`. Watch the **Deploy to GitHub Pages** run.
+4. Your site is at `https://<you>.github.io/<repo>/`, and your card is at
+   `https://<you>.github.io/<repo>/c/<username>/`.
 
-Publishing from the root matters: `index.html`, `profile-data/`, `lib/` and the rest all
-reference each other with **relative** paths, so the site works at any depth — a user page,
-a project page, or a custom domain — with no configuration.
+The workflow runs `npm run build` before uploading, so the `/c/<username>/` stubs exist even
+though they are gitignored, and development-only files (`tests/`, `tools/`) are removed from
+what gets published.
 
-### Option B — publish from `/demo` (the original spec's suggestion)
+### Zero-configuration — deploy from a branch
 
-The spec for this project suggested publishing `/demo` as the site root. That works too, but
-then the demo pages lose access to `../lib/` and `../profile-data/`, because GitHub Pages
-will only serve what is inside the published folder. If you want Option B, copy `lib/`,
-`card-templates/` and `profile-data/` into `demo/` first and adjust the relative paths.
+If you would rather not use Actions:
 
-**Option A is simpler and is what the rest of this document assumes.**
+1. **Settings → Pages → Source → Deploy from a branch.**
+2. *Branch* `main`, folder `/ (root)`. Save.
+3. Wait a minute.
 
-### Turning the demo data into your data
+This works because `c/index.html` and `404.html` are committed. A visitor who follows
+`/c/<username>/` gets `404.html`, which boots the same profile renderer in place — the URL stays
+in the address bar, there is no redirect and no error page. The only difference from the
+workflow path is that the per-username stubs are generated on demand by the fallback instead of
+ahead of time.
 
-1. Open `https://<you>.github.io/<repo>/card-builder/`.
-2. Fill in your name, role, links and photo, pick a template.
-3. Download the card files you want (PDF for the printer, PNG for chat apps).
-4. Click **Download profile JSON**. You get `yourname.json`.
-5. Put that file in `profile-data/` in your repository, commit and push.
-6. Your card's QR should point at
-   `https://<you>.github.io/<repo>/demo/profile.html?u=yourname`.
-
-The card builder fills that URL in for you automatically — the value in the **Profile URL**
-field on step 3 is exactly what your printed QR should encode. Check it before you print.
+Publishing from the repository root matters: every page references its neighbours with
+**relative** paths, so the site works at any depth — a user page, a project page, or a custom
+domain — with no configuration.
 
 ---
 
-## 3. Clean `/c/username` URLs (recommended for real cards)
+## 4. How `/c/username/` works
 
-`/demo/profile.html?u=rahul123` works, but `/c/rahul123` is shorter, easier to say out loud,
-and survives a redesign of this repository. Both are the same page; the short form is just a
-rewrite.
+A QR code has to encode a URL that never changes, and a static host can only serve a URL that
+is a real file. So `tools/build-links.js` turns your JSON into both:
 
-### GitHub Pages
-
-GitHub Pages cannot rewrite URLs, so use a redirect file per username. Create
-`c/rahul123/index.html`:
-
-```html
-<!DOCTYPE html>
-<meta charset="utf-8">
-<title>Rahul Kumar — QR Link Card</title>
-<link rel="canonical" href="https://you.github.io/GrinCard/demo/profile.html?u=rahul123">
-<meta http-equiv="refresh" content="0; url=../../demo/profile.html?u=rahul123">
-<script>location.replace('../../demo/profile.html?u=rahul123' + location.search);</script>
-<p>Loading <a href="../../demo/profile.html?u=rahul123">rahul123</a>…</p>
+```bash
+npm run build
 ```
 
-`location.replace` is used rather than `location.href` so the redirect does not pollute the
-visitor's back button. The `<meta http-equiv="refresh">` covers the (rare) no-JavaScript case.
+| Generated | Purpose |
+| --- | --- |
+| `profile-data/index.json` | The manifest the site root reads. A static site cannot list a directory, so this *is* the listing. **Committed.** |
+| `c/index.html` | A directory page of every card. **Committed.** |
+| `c/<username>/index.html` | A ~14-line stub per person that runs the shared renderer. **Gitignored** — derived, and a renamed profile should not leave a stale URL behind. |
+| `card-templates/community/index.json` | The list of contributed templates. **Committed.** |
 
-Then set `profile_url` in `profile-data/rahul123.json` to
-`https://you.github.io/GrinCard/c/rahul123/` so the dashboard and builder generate QR codes
-for the short URL.
+Each stub sets `data-username` and loads `profile/profile.js` + `profile/boot.js`, which work
+out the climb back to the site root from the URL they were served from. There is one renderer
+and no per-user code.
+
+`404.html` is the net underneath all of it: for any path, it probes for the site root and boots
+the same renderer, so `/c/<username>/` works before you have run anything, on hosts without
+Actions, and for a profile you added but forgot to build.
+
+**Add a profile and forget the build?** Your `/c/<username>/` link still works (via
+`404.html`); only the index listing lags. CI fails on a stale manifest so you find out.
+
+---
+
+## 5. Other hosts
+
+Anything that serves static files works. If your host can rewrite URLs, use that instead of
+generated stubs — it is one rule rather than one file per person, and there is nothing to
+regenerate.
 
 ### Netlify
 
-Add a `_redirects` file at the site root:
+`netlify.toml`:
+
+```toml
+[[redirects]]
+  from = "/c/:username"
+  to   = "/profile/?u=:username"
+  status = 200        # a rewrite, not a redirect: the URL stays in the address bar
+```
+
+Or a `_redirects` file:
 
 ```
-/c/:username   /demo/profile.html?u=:username   200
-/dashboard/:username  /dashboard/index.html?u=:username  200
+/c/:username   /profile/?u=:username   200
 ```
-
-The `200` makes it a rewrite rather than a redirect, so the visitor keeps seeing
-`/c/rahul123` in the address bar.
 
 ### Nginx
 
 ```nginx
 location ~ ^/c/([a-z0-9_.-]+)/?$ {
-    rewrite ^ /demo/profile.html?u=$1 last;
+    rewrite ^ /profile/?u=$1 last;
 }
 ```
 
@@ -118,8 +181,14 @@ location ~ ^/c/([a-z0-9_.-]+)/?$ {
 
 ```apache
 RewriteEngine On
-RewriteRule ^c/([A-Za-z0-9_.-]+)/?$ demo/profile.html?u=$1 [L,QSA]
+RewriteRule ^c/([A-Za-z0-9_.-]+)/?$ profile/?u=$1 [L,QSA]
 ```
+
+### S3 / CloudFront, Firebase Hosting, Caddy, anything else
+
+Either enable the equivalent rewrite, or just run `npm run build` and upload the generated
+files. CloudFront additionally needs a custom 404 response pointing at `/404.html` with status
+200 if you want the fallback path.
 
 ---
 
@@ -129,51 +198,62 @@ One JSON file per person in `profile-data/`. The filename must match the `userna
 inside it — that is how the page finds you.
 
 ```bash
-cp profile-data/demo-template.json profile-data/priya.json
+cp profile-data/rahul.json profile-data/priya.json
 $EDITOR profile-data/priya.json
+npm run build
 ```
 
-The dashboard does this in the browser instead (it writes to `localStorage` and lets you
-export the JSON), which is useful for trying things out, but for a published site the file in
-the repository is what visitors actually see. See
+Each person gets their own permanent URL, their own card and their own tokens. Nothing else
+changes; the index page picks them up from the manifest.
+
+The dashboard does this in the browser instead (it writes to `localStorage` and lets you export
+the JSON), which is useful for trying things out, but for a published site the file in the
+repository is what visitors actually see. See
 [docs/CUSTOMIZATION.md](docs/CUSTOMIZATION.md) for every field, and
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-v1-trust-model) for what `localStorage` is
-and is not for.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-v1-trust-model) for what `localStorage` is and
+is not for.
 
 ---
 
 ## Custom domain and HTTPS
 
-Point a `CNAME` at `<you>.github.io` and enable **Enforce HTTPS** in the Pages settings. Then:
+Point a `CNAME` at `<you>.github.io` and enable **Enforce HTTPS** in the Pages settings.
 
-1. Update `profile_url` in each profile JSON to the new domain.
-2. Re-download and **re-print** the cards, or accept that existing cards still point at the
-   old URL (which keeps working, so there is no rush).
+Then do nothing else. Because every URL in this project is derived from where the site is being
+served, your cards' URLs become `https://cards.example.com/c/<username>/` automatically the next
+time you regenerate and print.
 
-This is the one thing about a printed QR code that you cannot undo later, so get the domain
-right before the first print run. The URL on a card is permanent by design — that is the whole
-point of the product.
+Two caveats, both about paper rather than software:
+
+1. **Cards you already printed keep the old URL.** It keeps working (GitHub Pages still serves
+   the `github.io` host), so there is no emergency — but decide your domain before the first
+   print run, because a printed QR code is the one thing you cannot update later.
+2. If you want the *old* URL to be what is printed forever, set an absolute
+   `"profile_url"` in that profile's JSON. An explicit absolute URL always wins over the derived
+   one; the dashboard exposes this under *Use a custom domain instead*.
 
 ---
 
 ## Verifying a deployment
 
-Run through this list once after deploying. It takes two minutes and catches everything that
-goes wrong in practice.
+Two minutes, and it catches everything that goes wrong in practice.
 
-1. `https://<you>.github.io/<repo>/` loads the landing page **and** the showcase cards at the
-   bottom render. If they do not, `profile-data/*.json` is not being served — check that the
-   files are on the branch you published.
-2. `demo/profile.html?u=<yourname>` shows your links and your photo.
-3. `demo/profile.html?u=<yourname>&t=<a token you minted>` shows the extra private link.
-4. `demo/print-sheet.html?u=<yourname>` → print a page → hold a ruler against the card frame.
-   It should measure 89 × 51 mm. If it does not, your browser applied a scaling factor;
-   set it to 100% / "Actual size". See [docs/PRINTING.md](docs/PRINTING.md).
-5. Scan the printed card with a phone camera. It should open your profile, not a search
-   engine. If it opens a search engine, the `profile_url` field was empty or relative when
-   you generated the QR.
-6. Open the profile in a **private browsing window** with no query parameters. You should see
-   only your public links. This is the check that matters most, and it is the one people skip.
+1. `https://<you>.github.io/<repo>/` lists your cards, each with a URL and a QR. If it says
+   "No profiles yet", `profile-data/index.json` is missing or stale — run `npm run build`.
+2. `c/<username>/` shows your links and your photo, and the address bar still says
+   `c/<username>/`. (If you see a flash of "Looking up that link…", you are on the `404.html`
+   path — that is fine, but the Actions deploy is faster.)
+3. `profile/?u=<username>&t=<a token you minted>` shows the extra private link.
+4. `print/?u=<username>` → print a page → hold a ruler against the card frame. It should measure
+   89 × 51 mm. If it does not, your browser applied a scaling factor; set it to 100% /
+   "Actual size". See [docs/PRINTING.md](docs/PRINTING.md).
+5. Scan the printed card with a phone camera. It should open your profile, not a search engine.
+   If it opens a search engine, the QR was generated from an empty or relative URL — regenerate
+   from the dashboard or builder, where the URL is derived for you.
+6. Open your profile in a **private browsing window** with no query parameters. You should see
+   only your public links. This is the check that matters most, and the one people skip.
+7. `npm run validate && node tools/check-links.js` — generated files are current and no page
+   links to something that moved.
 
 ---
 
@@ -185,10 +265,12 @@ Optional, but worth doing if you changed anything in `lib/`:
 npm test
 ```
 
-On a fresh clone this passes 58 tests and skips 68 — the skipped ones compare our output against
-independent implementations (`qrcode`, `jsQR`, `pdfjs-dist`, `@napi-rs/canvas`, `jsdom`) which are
-**not** dependencies of the project and are not needed to run the site. Install them to run all
-126; [CONTRIBUTING.md](CONTRIBUTING.md#the-dev-only-oracles) has the commands.
+On a fresh clone this passes the tests that need nothing but Node and **skips** the ones that
+compare our output against independent implementations (`qrcode`, `jsQR`, `pdfjs-dist`,
+`@napi-rs/canvas`, `jsdom`). Those are dev-only oracles, not project dependencies. Install them
+to run everything; [CONTRIBUTING.md](CONTRIBUTING.md#the-dev-only-oracles) has the commands.
+
+CI runs the full set on every push — see `.github/workflows/ci.yml`.
 
 ---
 
@@ -196,10 +278,14 @@ independent implementations (`qrcode`, `jsQR`, `pdfjs-dist`, `@napi-rs/canvas`, 
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Pages load but show "Profile not found" | `profile-data/<username>.json` is missing, or the filename does not match the `username` field | Check the spelling; the lookup is case-sensitive |
-| Everything loads locally but not on GitHub Pages | You opened the files over `file://` locally and pushed a path that only worked there | All internal links must be relative (`../lib/qr.js`), never absolute (`/lib/qr.js`) |
+| "No profiles yet" on the site root | `profile-data/index.json` missing or stale | `npm run build`, commit the manifest |
+| `/c/<username>/` works locally but not on Pages | Branch deploy without the generated stubs | Enable the Actions workflow, or rely on `404.html` (check it is at the repo root) |
+| "No profile here" on a page that should work | The filename does not match the `username` field | They must be identical; the lookup is case-sensitive |
+| Your card's URL points at someone else's site | A `"profile_url"` copied from an example profile | Delete the field and let it derive, or set your own absolute URL |
+| Everything loads locally but not on GitHub Pages | You tested over `file://` and pushed a path that only worked there | All internal links must be relative (`../lib/qr.js`), never absolute (`/lib/qr.js`) |
+| A contributed template does not appear | Not listed in `card-templates/community/index.json` | `npm run build:templates` — see [docs/TEMPLATES.md](docs/TEMPLATES.md) |
 | Photos show on screen but vanish from the downloaded PDF | The photo is on another origin and the browser blocked reading its pixels | Host the photo in the repo, or paste a data URL / upload it in the dashboard |
-| The QR scans but opens the wrong site | `profile_url` still points at the demo domain | Set `profile_url` in your JSON, then regenerate and re-download the card |
-| Printing comes out 90% or 110% size | The print dialog's "Fit to page" / "Shrink to printable area" | Choose **100%** / **Actual size** and disable fit-to-page |
-| A temporary link stopped working | It expired, or its use count ran out | That is correct behaviour — mint a new one in the dashboard |
-| `node --test tests/` fails with `MODULE_NOT_FOUND` | The directory form resolves differently in some Node versions | Pass the test files explicitly |
+| The QR scans but opens the wrong site | The QR was generated from a stale or hand-typed URL | Regenerate from the builder/dashboard, where the URL is derived |
+| Printing comes out 90% or 110% size | The print dialog's "Fit to page" | Choose **100%** / **Actual size** |
+| A temporary link stopped working | It expired, or its use count ran out | Correct behaviour — mint a new one in the dashboard |
+| `node --test tests/` fails with `MODULE_NOT_FOUND` | The directory form resolves differently in some Node versions | Pass the test files explicitly (`npm test` does) |

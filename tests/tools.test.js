@@ -392,34 +392,51 @@ test('install-workflows copies the canonical workflows, and detects drift', () =
   assert.equal(pkg.scripts['workflows:install'], 'node tools/install-workflows.js');
   assert.equal(pkg.scripts['workflows:check'], 'node tools/install-workflows.js --check');
 
-  // --check must pass when the installed copies agree, and fail when they do not.
-  assert.equal(iw.main(['--check']), 0, 'installed workflows should match the canonical ones');
+  // The lifecycle, exercised in a temp directory via --dest. Testing against the real
+  // .github/workflows/ would make the result depend on whether anyone had run the
+  // installer yet — and that directory is gitignored, so a fresh clone does not have
+  // it at all. Writing into the repository under test is also not something a test
+  // should quietly do.
+  const dest = fs.mkdtempSync(path.join(os.tmpdir(), 'workflows-'));
+  try {
+    assert.equal(iw.main(['--check', '--dest', dest]), 1,
+      'nothing installed yet must fail --check, not pass silently');
 
-  const installedCi = path.join(iw.DEST, 'ci.yml');
-  if (fs.existsSync(installedCi)) {
-    const original = fs.readFileSync(installedCi, 'utf8');
-    try {
-      fs.writeFileSync(installedCi, original + '\n# deliberate drift\n');
-      assert.equal(iw.main(['--check']), 1, 'drift must be detected');
-      assert.equal(iw.main(['--force']), 0, '--force must repair it');
-      assert.equal(fs.readFileSync(installedCi, 'utf8'), original, 'repaired byte for byte');
-    } finally {
-      fs.writeFileSync(installedCi, original);
-    }
+    assert.equal(iw.main(['--dest', dest]), 0, 'a plain run installs them');
+    files.forEach((f) => {
+      assert.equal(fs.readFileSync(path.join(dest, f), 'utf8'),
+        fs.readFileSync(path.join(iw.SRC, f), 'utf8'), f + ' must be copied byte for byte');
+    });
+    assert.equal(iw.main(['--check', '--dest', dest]), 0, 'and then --check passes');
+    assert.equal(iw.main(['--dest', dest]), 0, 'a second run changes nothing (idempotent)');
+
+    fs.appendFileSync(path.join(dest, 'ci.yml'), '\n# deliberate drift\n');
+    assert.equal(iw.main(['--check', '--dest', dest]), 1, 'drift must be detected');
+    assert.equal(iw.main(['--force', '--dest', dest]), 0, '--force must repair it');
+    assert.equal(fs.readFileSync(path.join(dest, 'ci.yml'), 'utf8'),
+      fs.readFileSync(path.join(iw.SRC, 'ci.yml'), 'utf8'), 'repaired byte for byte');
+
+    fs.rmSync(path.join(dest, 'pages.yml'));
+    assert.equal(iw.main(['--check', '--dest', dest]), 1, 'a missing workflow must fail --check');
+    assert.equal(iw.main(['--dest', dest]), 0, 'and a plain run puts it back');
+    assert.ok(fs.existsSync(path.join(dest, 'pages.yml')));
+  } finally {
+    fs.rmSync(dest, { recursive: true, force: true });
   }
 
-  // And a missing workflow is reported, not silently skipped.
-  const installedPages = path.join(iw.DEST, 'pages.yml');
-  if (fs.existsSync(installedPages)) {
-    const original = fs.readFileSync(installedPages, 'utf8');
-    try {
-      fs.rmSync(installedPages);
-      assert.equal(iw.main(['--check']), 1, 'a missing workflow must fail --check');
-      assert.equal(iw.main([]), 0, 'a plain run must reinstall it');
-      assert.equal(fs.readFileSync(installedPages, 'utf8'), original);
-    } finally {
-      if (!fs.existsSync(installedPages)) fs.writeFileSync(installedPages, original);
-    }
+  // The repository's own state, asserted honestly either way. `.github/workflows/` is
+  // gitignored because the token that built this repository cannot push there, so a
+  // fresh clone legitimately has nothing installed — and the check must say so rather
+  // than pass. Once installed, it must agree with the canonical copies.
+  const installed = files.map(f => path.join(iw.DEST, f));
+  const present = installed.filter(f => fs.existsSync(f));
+  if (present.length === installed.length) {
+    assert.equal(iw.main(['--check']), 0,
+      'installed workflows must match tools/github-workflows/ — run npm run workflows:install');
+  } else {
+    assert.equal(present.length, 0, 'either both workflows are installed or neither is');
+    assert.equal(iw.main(['--check']), 1,
+      'a fresh clone has no workflows installed, and --check must report that');
   }
 });
 

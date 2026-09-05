@@ -25,7 +25,7 @@ const requestInterceptor = jsdomLib && jsdomLib.requestInterceptor;
 const NO_JSDOM = jsdomLib ? false : ORACLE.INSTALL_HINT;
 
 const ROOT = path.join(__dirname, '..');
-const { linkableFiles } = require('../tools/check-links.js');
+const { linkableFiles, generatedStubNotice } = require('../tools/check-links.js');
 const ORIGIN = 'http://localhost:8080';
 
 function repoFile(rel, prefix) {
@@ -320,6 +320,12 @@ test('every HTML file references only assets that exist', () => {
       if (ref.startsWith('{{') || ref.includes('${')) continue;
       const target = path.resolve(dir, ref.split('?')[0]);
       if (!fs.existsSync(target)) {
+        // c/index.html is committed but the per-username stubs it links to are
+        // generated and gitignored, so on a fresh clone they are legitimately absent.
+        // Reuse the rule tools/check-links.js already applies rather than restating it
+        // here, where it would eventually diverge: if the profile exists the link is
+        // correct and only the artifact is missing, and 404.html serves the path anyway.
+        if (generatedStubNotice(page, target)) continue;
         problems.push(path.relative(ROOT, page) + ' -> ' + ref);
       }
     }

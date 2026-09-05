@@ -33,7 +33,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC = path.join(__dirname, 'github-workflows');   // the canonical copies
-const DEST = path.join(__dirname, '..', '.github', 'workflows');
+const DEFAULT_DEST = path.join(__dirname, '..', '.github', 'workflows');
 
 function workflowFiles() {
   return fs.readdirSync(SRC).filter(f => /\.ya?ml$/.test(f)).sort();
@@ -41,6 +41,10 @@ function workflowFiles() {
 
 function install(options) {
   options = options || {};
+  // Overridable so the test suite can exercise the whole lifecycle — missing,
+  // installed, drifted, repaired — in a temp directory instead of writing into the
+  // repository it is testing.
+  const DEST = options.dest || DEFAULT_DEST;
   const files = workflowFiles();
   if (!files.length) {
     console.error('install-workflows: no .yml files found in ' + SRC);
@@ -101,11 +105,15 @@ function install(options) {
 
 function main(argv) {
   const args = { check: false, force: false };
-  (argv || []).forEach((a) => {
+  const list = argv || [];
+  list.forEach((a, i) => {
     if (a === '--check') args.check = true;
     else if (a === '--force') args.force = true;
+    else if (a === '--dest') args.dest = list[i + 1];
+    else if (a.startsWith('--dest=')) args.dest = a.slice('--dest='.length);
     else if (a === '--help' || a === '-h') {
-      console.log('usage: node tools/install-workflows.js [--check] [--force]');
+      console.log('usage: node tools/install-workflows.js [--check] [--force] [--dest DIR]');
+      console.log('  copies tools/github-workflows/*.yml into .github/workflows/');
       return 0;
     }
   });
@@ -113,4 +121,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { main, install, workflowFiles, SRC, DEST };
+module.exports = { main, install, workflowFiles, SRC, DEST: DEFAULT_DEST };

@@ -218,4 +218,7 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { main, extractLinks, stripScripts, resolveTarget, isExternal, linkableFiles };
+module.exports = {
+  main, extractLinks, stripScripts, resolveTarget, isExternal, linkableFiles,
+  generatedStubNotice
+};

@@ -1,0 +1,44 @@
+{
+  "name": "open-qr-link-card",
+  "version": "1.0.0",
+  "description": "Printable QR business cards whose link page changes with the visitor. Fork it, edit one JSON file, deploy to GitHub Pages, print the card.",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/access.test.js tests/qr.test.js tests/card.test.js tests/generator.test.js tests/dom.test.js tests/tools.test.js",
+    "test:core": "node --test tests/access.test.js",
+    "test:qr": "node --test tests/qr.test.js",
+    "test:card": "node --test tests/card.test.js",
+    "test:generator": "node --test tests/generator.test.js",
+    "test:dom": "node --test tests/dom.test.js",
+    "build": "node tools/build-links.js && node tools/build-templates.js",
+    "build:links": "node tools/build-links.js",
+    "build:templates": "node tools/build-templates.js",
+    "validate": "node tools/build-links.js --check && node tools/build-templates.js --check",
+    "workflows:install": "node tools/install-workflows.js",
+    "workflows:check": "node tools/install-workflows.js --check",
+    "clean": "node tools/build-links.js --clean",
+    "start": "python3 -m http.server 8080",
+    "test:tools": "node --test tests/tools.test.js"
+  },
+  "keywords": [
+    "qr",
+    "qr-code",
+    "business-card",
+    "digital-business-card",
+    "link-in-bio",
+    "print",
+    "pdf",
+    "static-site",
+    "github-pages",
+    "vanilla-js",
+    "no-dependencies"
+  ],
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {},
+  "comments": {
+    "dependencies": "Deliberately empty. The site is plain HTML/CSS/JS and must stay that way \u2014 see CONTRIBUTING.md. Some tests compare our output against independent implementations (qrcode, jsqr, pdfjs-dist, @napi-rs/canvas, jsdom); they are looked for OUTSIDE the repo, see tests/oracle.js.",
+    "test": "Runs the five suites explicitly rather than the directory, because `node --test tests/` trips over module resolution in some Node versions. Suites that need the dev-only oracles skip with an install hint when they are missing, so this works on a fresh clone; install them (CONTRIBUTING.md#the-dev-only-oracles) to get the full 126.",
+    "test:core": "The tier/token/follower rules \u2014 no external packages needed at all."
+  }
+}

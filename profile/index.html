@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile — QR Link Card</title>
+<meta name="description" content="A dynamic link page: the same permanent URL shows different links to strangers, temporary-token holders and approved followers.">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<!--
+  This is the profile renderer, reachable as /profile/?u=username.
+
+  The URL you print on a card is /c/username/ instead — a generated stub that
+  runs this exact same code one directory deeper. Both hosts load boot.js, which
+  works out the username and the climb back to the site root, so nothing here is
+  hardcoded to a depth or a domain.
+-->
+<body data-base-depth="1" class="profile-page">
+
+<noscript>
+  <div class="wrap" style="padding:40px 20px">
+    <p>This page needs JavaScript: your links are chosen at load time based on how
+    you arrived. The QR code on the card still points here, and nothing is stored
+    on your device beyond what the site serves.</p>
+  </div>
+</noscript>
+
+<script src="../lib/qr.js"></script>
+<script src="../card-templates/card-templates.js"></script>
+<script src="../lib/access.js"></script>
+<script src="../lib/store.js"></script>
+<script src="profile.js"></script>
+<script src="boot.js"></script>
+</body>
+</html>

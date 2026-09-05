@@ -1,0 +1,89 @@
+# Deploy this fork to its own GitHub Pages site.
+#
+# This is the workflow that makes the printed URL real. `/c/<username>/` has to be
+# an actual file for a static host to serve it, so before uploading we run
+# `npm run build`, which writes one small stub per profile in `profile-data/` plus
+# the manifests the index page reads. You never have to run it yourself, and you
+# never have to type your URL: tools/build-links.js derives everything from the
+# files you committed.
+#
+# First run: Settings → Pages → Source → GitHub Actions. That is the only manual
+# step, and `configure-pages` below will try to flip it for you.
+#
+# If you would rather not use Actions at all, deploy from a branch instead: the
+# committed `c/index.html` and `404.html` still make every `/c/<username>/` link
+# work, because 404.html boots the same renderer in place for any path.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, but never skip a push: the last one has to win.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Try to enable Pages on the repository if it is not on yet, so a fresh
+          # fork can deploy without a trip through the settings UI.
+          enablement: true
+
+      - name: Generate profile links and templates manifest
+        run: npm run build
+
+      - name: Show what will be published
+        run: |
+          echo "Permanent URLs generated:"
+          find c -name index.html | sort | sed 's|^|  /|; s|/index.html$|/|'
+          echo "Community templates:"
+          node -e "const m=require('./card-templates/community/index.json'); \
+            console.log('  ' + (m.templates||[]).map(t=>t.id).join(', ') || '  (none)')"
+
+      # Development-only material should not be published: the test suite reads
+      # fixture data and asserts on internals, and none of it is needed to serve
+      # a card.
+      - name: Remove development-only files
+        run: rm -rf tests .oracle node_modules .github tools .gitignore package.json package-lock.json
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Report the printed URL
+        run: |
+          echo "Your site is at ${{ steps.deployment.outputs.page_url }}"
+          echo "Your card links are at ${{ steps.deployment.outputs.page_url }}c/<username>/"

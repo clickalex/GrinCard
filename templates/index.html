@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card templates — QR Link Card</title>
+<meta name="description" content="Every card template — built-in and contributed — rendered live, with the standalone QR code for each.">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<!--
+  The template gallery. Previews are rendered from examples/, not from your own
+  profile-data/, so this page is safe to leave public: a gallery should not print
+  the owner's private links into a page anyone can open.
+
+  Contributed templates appear here automatically. Each one is a single
+  self-registering file in card-templates/community/ listed in that folder's
+  index.json; gallery.js calls CardTemplates.loadCommunity() and renders whatever
+  arrived. See docs/TEMPLATES.md.
+-->
+<!-- data-profile-dir points the renderer at the example fixtures instead of your own profiles. -->
+<body data-base-depth="1" data-profile-dir="../examples/">
+
+<a class="sr-only" href="#templates">Skip to templates</a>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">QR Link Card</a>
+  <nav>
+    <a href="../index.html">Cards</a>
+    <a href="../card-builder/">Builder</a>
+    <a href="../dashboard/">Dashboard</a>
+    <a href="./" aria-current="page">Templates</a>
+    <a href="../print/">Print</a>
+    <a href="../qr-generator/">QR tool</a>
+  </nav>
+</header>
+
+<main class="wrap" style="padding-top:26px; padding-bottom:60px">
+  <div class="dash-head">
+    <div>
+      <h1>Card templates</h1>
+      <p class="muted small mb0">
+        Rendered live from the example profiles — these are the same drawings the PDF and PNG exports
+        come from, not screenshots. Every template is free; nothing here is gated.
+      </p>
+    </div>
+    <div class="btn-row">
+      <a class="btn" href="../card-builder/">Build yours</a>
+      <!-- demo=1 travels with the fixture username: the print sheet has no
+           data-profile-dir of its own, so without the flag it reads profile-data/,
+           where rahul123 deliberately does not live. -->
+      <a class="btn btn-ghost" href="../print/?demo=1&u=rahul123">Print sheet</a>
+    </div>
+  </div>
+
+  <div id="alerts"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Profile</h2>
+      <span class="hint">Same templates, different person — the layout adapts to the content length.</span>
+    </div>
+    <div class="segmented" id="profile-picker" role="group" aria-label="Example profile"></div>
+  </section>
+
+  <div id="templates" class="stack mt2"></div>
+
+  <section class="panel mt2">
+    <div class="panel-head">
+      <h2>Contributed templates</h2>
+      <span class="hint" id="community-count">Checking the community folder…</span>
+    </div>
+    <div id="community-note" class="small muted">
+      <p>
+        A template is one file. Drop it in <code>card-templates/community/</code>, add a line to that
+        folder's <code>index.json</code> (or run <code>npm run build:templates</code> and let it write
+        the line for you), and it appears here and in the builder — no core file changes, so a pull
+        request adding a template cannot break anything else.
+      </p>
+      <p class="mb0">
+        <a href="../docs/TEMPLATES.md">Write a template</a> ·
+        <a href="../CONTRIBUTING.md">Send it upstream</a> ·
+        <a href="../docs/CUSTOMIZATION.md">Customise colours instead</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="panel mt2">
+    <div class="panel-head">
+      <h2>The QR on its own</h2>
+      <span class="hint">For an email signature, a poster, or a sticker.</span>
+    </div>
+    <div class="grid grid-2">
+      <div id="qr-standalone" style="max-width:280px"></div>
+      <div class="small muted">
+        <p>
+          The QR encodes <strong>only</strong> the permanent profile URL — never a destination and never a
+          temporary token. That is what makes it safe to print: tokens expire, and a printed code cannot be
+          revoked.
+        </p>
+        <dl class="kv">
+          <dt>Content</dt><dd id="qr-content">—</dd>
+          <dt>Version</dt><dd id="qr-version">—</dd>
+          <dt>Modules</dt><dd id="qr-modules">—</dd>
+          <dt>Error correction</dt><dd id="qr-ecl">Q · recovers 25% damage</dd>
+          <dt>Printed size</dt><dd id="qr-printed">30 mm (spec minimum 20 mm)</dd>
+          <dt>Quiet zone</dt><dd>4 modules, included in every export</dd>
+        </dl>
+        <div class="btn-row mt2">
+          <a class="btn btn-ghost btn-sm" href="../docs/PRINTING.md">Print checklist</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="../lib/qr.js"></script>
+<script src="../card-templates/card-templates.js"></script>
+<script src="../lib/access.js"></script>
+<script src="../lib/card.js"></script>
+<script src="../lib/store.js"></script>
+<script src="gallery.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+{
+  "_comment": [
+    "Fixture profile — belongs to the project, not to you.",
+    "",
+    "Note what is NOT here: \"profile_url\". The permanent URL a card prints is",
+    "derived from wherever this site is being served (Store.profileUrlFor), so a",
+    "fork's cards point at the fork. Hardcoding one here would make every fork",
+    "print a QR code pointing back at this repository.",
+    "Set \"profile_url\" only to override with a domain you own."
+  ],
+  "username": "meera9",
+  "display_name": "Meera Sharma",
+  "designation": "Owner, Sharma Provisions",
+  "tagline": "Wholesale and retail since 1998 · Sadar Bazaar, Delhi",
+  "photo_url": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZjhmN2EiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYzVmNTIiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjEwMCIgeT0iMTMyIiBmb250LWZhbWlseT0iSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iODgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5NUzwvdGV4dD48L3N2Zz4=",
+  "theme": "template-2",
+  "created_at": "2026-09-04T10:00:00Z",
+  "links": [
+    {
+      "id": "lnk_1",
+      "label": "Shop on Instagram",
+      "url": "https://instagram.com/sharmaprovisions",
+      "visibility": "public",
+      "order": 1
+    },
+    {
+      "id": "lnk_2",
+      "label": "Find us on Maps",
+      "url": "https://maps.google.com/?q=Sadar+Bazaar+Delhi",
+      "visibility": "public",
+      "order": 2
+    },
+    {
+      "id": "lnk_3",
+      "label": "Product Catalogue",
+      "url": "https://example.com/catalogue.pdf",
+      "visibility": "public",
+      "order": 3
+    },
+    {
+      "id": "lnk_4",
+      "label": "Wholesale Price List",
+      "url": "https://docs.example.com/wholesale-q3",
+      "visibility": "followers_only",
+      "order": 4
+    },
+    {
+      "id": "lnk_5",
+      "label": "Supplier Contact",
+      "url": "https://wa.me/919876543210",
+      "visibility": "followers_only",
+      "order": 5
+    }
+  ],
+  "card_settings": {
+    "template_id": "template-2",
+    "primary_color": "#1c5f52",
+    "show_photo": true
+  }
+}

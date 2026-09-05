@@ -1,0 +1,84 @@
+# CI — proves a fork is still a working site before it is merged or deployed.
+#
+# Four checks, in the order they are cheapest to fix:
+#
+#   1. generated files match the repository   (npm run validate)
+#      profile-data/index.json must list what is on disk, and every contributed
+#      template must be valid and listed. A stale manifest means someone added a
+#      profile or a template and forgot to regenerate.
+#   2. internal links resolve                 (node tools/check-links.js)
+#      This repository is a template that people restructure; a link to a file
+#      that moved is the most likely breakage and the hardest to notice by hand.
+#   3. the test suite                         (npm test)
+#      With the dev-only oracles installed, so the QR, PDF and DOM suites run
+#      instead of skipping.
+#   4. the build is idempotent                (npm run build twice)
+#      Regenerating must not produce a diff, or every deploy would churn.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests, links and generated files
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The oracles are independent implementations we check our output against
+      # (reference QR encoder, decoder, PDF reader, rasteriser, jsdom). They are
+      # installed OUTSIDE the repository on purpose: nothing in the shipped site
+      # has a dependency, and a stray node_modules/ inside it would undermine that.
+      # See tests/oracle.js.
+      - name: Install dev-only test oracles
+        run: |
+          mkdir -p /tmp/oracle
+          cd /tmp/oracle
+          npm init -y >/dev/null
+          npm i --no-audit --no-fund qrcode@1.5.4 jsqr pdfjs-dist @napi-rs/canvas jsdom
+
+      - name: Generated files are up to date
+        run: npm run validate
+
+      - name: Internal links resolve
+        run: node tools/check-links.js
+
+      # These workflows are committed under tools/github-workflows/ and installed into
+      # .github/workflows/, because a GitHub App token without the `workflows` permission
+      # cannot write there. See tools/github-workflows/README.md. If this step runs at all
+      # the files are installed; what it guards is someone editing the canonical copy and
+      # forgetting to re-install it, so CI quietly keeps running the old one.
+      - name: Workflows match their canonical copies
+        run: node tools/install-workflows.js --check
+
+      - name: Tests
+        env:
+          QR_ORACLE_DIR: /tmp/oracle
+        run: npm test
+
+      - name: Build is idempotent
+        run: |
+          npm run build >/dev/null
+          npm run build >/dev/null
+          # Generated stubs are gitignored, so `git diff` only sees committed
+          # artifacts: the two manifests. Those must not move.
+          if [ -n "$(git status --porcelain -- profile-data/index.json examples/index.json card-templates/community/index.json c/index.html)" ]; then
+            echo "::error::Running the build changed committed generated files:"
+            git status --porcelain -- profile-data/index.json examples/index.json card-templates/community/index.json c/index.html
+            git --no-pager diff -- profile-data/index.json examples/index.json card-templates/community/index.json c/index.html
+            exit 1
+          fi

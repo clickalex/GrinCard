@@ -176,6 +176,27 @@
     ]);
   }
 
+  /**
+   * A profile whose "username" field does not match its filename. The filename wins,
+   * because that is what the URL is built from — but saying nothing leaves somebody
+   * staring at a card whose URL is not the name they typed inside the file.
+   */
+  function mismatchNotice(mismatched) {
+    return el('div', { class: 'notice notice-warn mt2' }, [
+      el('strong', { text: mismatched.length === 1
+        ? 'A username does not match its filename.'
+        : mismatched.length + ' usernames do not match their filenames.' }),
+      el('ul', { class: 'small' }, mismatched.map(function (m) {
+        return el('li', { html:
+          '<code>profile-data/' + escapeHtml(m.name) + '.json</code> says ' +
+          '<code>"username": "' + escapeHtml(m.declared) + '"</code>. The filename is what ' +
+          'your URL is built from, so this card is at <code>' + escapeHtml(Store.siteRoot()) +
+          'c/' + escapeHtml(m.name) + '/</code> — set <code>"username"</code> to ' +
+          '<code>' + escapeHtml(m.name) + '</code> so the two agree.' });
+      }))
+    ]);
+  }
+
   function renderEmpty(target, missing) {
     target.innerHTML = '';
     target.appendChild(el('div', { class: 'empty-links' }, [
@@ -205,6 +226,7 @@
         var summaries = result.profiles;
         // Usernames the manifest still names, but which have no file any more.
         var missing = result.missing.slice();
+        var mismatched = (result.mismatched || []).slice();
 
         if (!summaries.length) {
           if (firstRun) firstRun.hidden = false;
@@ -258,6 +280,7 @@
           });
           target.appendChild(list);
 
+          if (mismatched.length) target.appendChild(mismatchNotice(mismatched));
           if (missing.length) target.appendChild(staleNotice(missing));
 
           target.appendChild(el('p', { class: 'tiny muted mt2', html:

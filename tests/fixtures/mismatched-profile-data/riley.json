@@ -1,0 +1,25 @@
+{
+  "username": "rileyx",
+  "display_name": "Riley Chen",
+  "designation": "Photographer",
+  "tagline": "Commissions open.",
+  "photo_url": "",
+  "theme": "midnight",
+  "created_at": "2026-01-01T00:00:00Z",
+  "links": [
+    {
+      "id": "lnk_site",
+      "label": "Portfolio",
+      "url": "https://example.com",
+      "visibility": "public",
+      "order": 1
+    }
+  ],
+  "card_settings": {
+    "template_id": "template-1",
+    "primary_color": null,
+    "accent_color": null,
+    "show_photo": true,
+    "tagline": "Scan for everything"
+  }
+}

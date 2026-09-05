@@ -936,6 +936,34 @@ test('cards index: a stale manifest lists nothing, not a card for somebody gone'
       'it should say their live links are unaffected');
   });
 
+test('cards index: the filename beats a mismatched "username" field',
+  { skip: NO_JSDOM }, async () => {
+    const { doc, errors } = await loadPage('index.html',
+      { settleMs: 700, profileDir: 'tests/fixtures/mismatched-profile-data/' });
+    assert.deepEqual(errors, [], errors.join('\n'));
+
+    // riley.json exists but declares "username": "rileyx" — what happens when somebody
+    // renames the file in GitHub's web UI and not the field inside it. The URL is
+    // /c/riley/, because that is the file the profile page fetches, so the card must be
+    // listed under riley. Keying off the declared field instead lists a card for
+    // /c/rileyx/, which does not exist, and then reports it missing — telling somebody
+    // who has a working card that they have no cards at all.
+    const rows = doc.querySelectorAll('#cards .card-index-row');
+    assert.equal(rows.length, 1, 'the real profile must be listed');
+    assert.equal(rows[0].getAttribute('data-username'), 'riley');
+    const url = rows[0].querySelector('.url-value').textContent.trim();
+    assert.equal(url, ORIGIN + '/c/riley/', 'the URL shown must be the one that works');
+    assert.ok(!url.includes('rileyx'), 'and must not be the name declared inside the file');
+
+    // Silence here would leave somebody staring at a URL that is not the name they
+    // typed, so the disagreement is surfaced with both values and the fix.
+    const warn = Array.from(doc.querySelectorAll('#cards .notice-warn'))
+      .map(n => n.textContent).join(' ');
+    assert.match(warn, /riley\.json/);
+    assert.match(warn, /rileyx/, 'it should quote what the file declares');
+    assert.match(warn, /filename is what your URL is built from/i);
+  });
+
 test('print sheet page: lays out both sides with mm-sized frames', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('print/index.html', { search: '?u=rahul123', settleMs: 800, profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));

@@ -1,0 +1,13 @@
+{
+  "$comment": [
+    "Test fixture — the filename and the declared username disagree.",
+    "profile-data/riley.json exists and says \"username\": \"rileyx\", which is what",
+    "happens when somebody renames the file in GitHub's web UI but not the field",
+    "inside it. tests/dom.test.js asserts the cards page lists the real URL."
+  ],
+  "generated_at": "2026-09-05",
+  "count": 1,
+  "profiles": [
+    "riley"
+  ]
+}

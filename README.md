@@ -19,7 +19,31 @@ no build step, no dependencies. Everything is MIT.
 
 ---
 
-## Use it as your own (three steps)
+## Use it as your own — no terminal required
+
+Five steps, all of them on github.com. The only files you ever touch are JSON, and there is
+nothing to install.
+
+1. **Click [Fork](https://github.com/clickalex/GrinCard/fork)** to make your own copy. You can
+   rename it in the dialog — `my-card` is fine — and keep it **Public**.
+2. **Open `profile-data/yourname.json`** and click the pencil. In the filename box, rename it
+   to `<you>.json`; inside, set `"username"` to match and edit your name, role and links.
+   **Commit changes.**
+3. **Open `profile-data/index.json`** and put your username in the `profiles` list, replacing
+   `yourname`. One line. **Commit.**
+4. **Settings → Pages → Source: *Deploy from a branch*** — `main`, `/ (root)`, Save.
+5. **Open your site.** Your card is listed with its permanent URL, a **Copy link** button and
+   a QR code beside it. Click **Print** for a press-ready sheet.
+
+Your link is `https://YOU.github.io/my-card/c/you/` — that is what goes on the card, and it
+never changes however you edit the JSON behind it.
+
+Prefer a form to raw JSON? The [dashboard](dashboard/) has a visual template picker, edits
+your links with a live card preview, and its **Copy** button hands you the finished JSON to
+paste back into GitHub.
+
+<details>
+<summary><strong>Or do it on your own computer</strong> (if you have Node.js and would like to preview locally)</summary>
 
 ```bash
 # 1. Fork, then clone your fork
@@ -33,9 +57,11 @@ $EDITOR profile-data/rahul.json
 npm run build && npm start
 ```
 
-Open <http://localhost:8080/> and your card is listed with the URL to print and a QR code
-beside it. Push to GitHub, enable Pages, and `https://YOU.github.io/GrinCard/c/rahul/` is
-live — that is what goes on the card.
+Open <http://localhost:8080/>. `npm run build` is a convenience, not a requirement —
+`/c/<username>/` works without it, and the build additionally pre-renders each link to a
+real page and refreshes `profile-data/index.json` for you.
+
+</details>
 
 **You never type your own URL.** `Store.profileUrlFor()` derives it from wherever the site
 is actually being served, so a fork's cards point at the fork, a custom domain changes

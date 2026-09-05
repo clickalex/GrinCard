@@ -5,6 +5,7 @@ There is no server to run, no database to provision, no dependency to install an
 toolchain — the site is plain HTML, CSS and JavaScript, and the only "build" is a script that
 writes the small files your printed URLs need.
 
+0. **[The short version — entirely in your browser](#the-short-version--entirely-in-your-browser)**
 1. [On your own computer](#1-on-your-own-computer-30-seconds)
 2. [Make it yours](#2-make-it-yours)
 3. [On GitHub Pages](#3-on-github-pages)
@@ -17,7 +18,79 @@ writes the small files your printed URLs need.
 
 ---
 
+## The short version — entirely in your browser
+
+No terminal, no Node.js, nothing to install. Every step happens on github.com, and the only
+files you ever touch are JSON. If you would rather work locally, skip to [§1](#1-on-your-own-computer-30-seconds).
+
+**1. Create your own repository.**
+On the [QR Link Card page](https://github.com/clickalex/GrinCard), click **Fork**. The dialog
+lets you rename it — `my-card` is fine — and you can leave *Copy the default branch only*
+ticked. Keep it **Public**: GitHub Pages needs a public repository on the free plan.
+
+(If the repository is marked as a template, **Use this template → Create a new repository**
+does the same thing and gives you a clean history with no "forked from" banner. Everything
+below is identical either way.)
+
+**2. Turn the starter profile into yours.**
+In your new repository, open `profile-data/yourname.json` and click the **pencil** icon.
+In the filename box at the top, change `yourname.json` to `<your-username>.json` — that name
+becomes your printed URL. In the file itself:
+
+- `"username"` — must match the new filename exactly.
+- `display_name`, `designation`, `tagline` — the front of the card.
+- `links[]` — each with `label`, `url` and `"visibility"`, which is `"public"` or
+  `"followers_only"`. Public links show to anyone who scans the card; `followers_only` ones
+  appear only for a temporary token or an approved follower.
+- `card_settings.template_id` — the look of the card; see [templates/](templates/).
+- Delete `"_starter": true` when you are done.
+
+Click **Commit changes**.
+
+**3. Put your card on your home page.**
+Open `profile-data/index.json`, click the pencil, and replace `"yourname"` in the `profiles`
+list with your username. One line. Commit.
+
+A static site cannot list a directory, so this file is how your home page knows which cards
+exist. If you skip this step nothing breaks — your link still works — the card just is not
+listed on the home page. (Step 4's Actions route does this for you on every push.)
+
+**4. Turn on GitHub Pages.**
+**Settings → Pages → Build and deployment → Source**, then pick either:
+
+- **Deploy from a branch** — choose branch `main`, folder `/ (root)`, **Save**. Nothing else to
+  do; your site is live within a minute or two.
+- **GitHub Actions** — first create the workflow: **Add file → Create new file**, name it
+  `.github/workflows/pages.yml`, paste in the contents of
+  [`tools/github-workflows/pages.yml`](tools/github-workflows/pages.yml), commit, then select
+  **GitHub Actions** as the source. This pre-renders every `/c/<username>/` page and refreshes
+  the cards list on each push, so you never touch `index.json` again.
+
+The difference is worth knowing: with *Deploy from a branch* your `/c/<username>/` link is
+served by the site's own fallback page. It renders perfectly — but the HTTP status is `404`,
+so some chat apps will not build a rich link preview for it. The Actions route serves it as a
+normal `200` page.
+
+**5. Copy your link and print the card.**
+Your site is at `https://<your-username>.github.io/<repo-name>/`, and your card is at
+`https://<your-username>.github.io/<repo-name>/c/<your-username>/`.
+
+You never type that URL: the home page derives it from wherever the site is actually being
+served and shows it with a **Copy link** button and a QR code. Open **Print** for a
+press-ready sheet. See [docs/PRINTING.md](docs/PRINTING.md) for the card specification.
+
+**Prefer forms to JSON?** Open [`dashboard/`](dashboard/) on your deployed site: it has a
+visual template picker, edits your links with a form, previews the card live, and its
+**Copy** button gives you the finished JSON to paste back into
+`profile-data/<your-username>.json` on GitHub.
+
+That is the whole thing. Day-to-day, you edit one JSON file and commit.
+
+---
+
 ## 1. On your own computer (30 seconds)
+
+*Following the browser route above? You do not need this section.*
 
 ```bash
 git clone https://github.com/YOU/GrinCard.git

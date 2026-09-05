@@ -382,7 +382,13 @@ test('pruneExpiredTokens removes only the past', () => {
         assert.deepEqual([...raw.profiles].sort(), onDisk,
           `${dataDir}/index.json disagrees with the directory — run npm run build`);
         assert.equal(raw.count, raw.profiles.length);
-        assert.ok(raw.$comment.some(line => /do not edit by hand/i.test(line)));
+        // Attributed to the generator, yet still editable: a person deploying from
+        // GitHub's web UI cannot run a build, so editing this list is their only route
+        // to having their card appear. Both shipped manifests must say so.
+        const comment = raw.$comment.join('\n');
+        assert.match(comment, /build-links\.js/);
+        assert.ok(!/do not edit by hand/i.test(comment),
+          'hand-editing must stay supported for people with no build step');
         continue;
       }
 

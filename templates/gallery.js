@@ -40,6 +40,36 @@
 
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
+  /** Clipboard with a fallback: file:// and some browsers block the async API. */
+  function copy(text, button) {
+    function done(ok) {
+      if (!button) return;
+      var label = button.textContent;
+      button.textContent = ok ? 'Copied' : 'Press ⌘C';
+      button.disabled = true;
+      setTimeout(function () { button.textContent = label; button.disabled = false; }, 1400);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacy()); });
+    } else {
+      done(legacy());
+    }
+    function legacy() {
+      try {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(area);
+        return ok;
+      } catch (e) { return false; }
+    }
+  }
+
   /**
    * The URL the gallery prints into each card's QR: the canonical /c/<username>/
    * link, derived from where this site is served rather than hardcoded here.
@@ -102,6 +132,24 @@
       ]));
       panel.appendChild(el('p', { class: 'tiny muted mt1',
         text: 'Type is shrunk and then ellipsised so nothing can overflow the trim area.' }));
+
+      // How to actually use this one. This page is where people choose a design, and the
+      // no-terminal path is editing profile-data/<username>.json on GitHub — so the exact
+      // string that belongs in card_settings.template_id has to be sitting right here,
+      // instead of being something to hunt for in the docs.
+      panel.appendChild(el('div', { class: 'url-row mt2' }, [
+        el('code', { class: 'url-value', text: '"template_id": "' + template.id + '"' }),
+        el('button', {
+          type: 'button', class: 'btn btn-sm', text: 'Copy id',
+          onclick: function (ev) { copy(template.id, ev.currentTarget); }
+        }),
+        el('a', { class: 'btn btn-sm btn-ghost', href: '../dashboard/', text: 'Pick it in the dashboard' }),
+        el('a', { class: 'btn btn-sm btn-ghost', href: '../card-builder/', text: 'Or the card builder' })
+      ]));
+      panel.appendChild(el('p', { class: 'tiny muted mt1', html:
+        'Put that line in <code>card_settings</code> inside your ' +
+        '<code>profile-data/&lt;username&gt;.json</code>, or choose the same design with a ' +
+        'click in the dashboard or card builder — both write the same file.' }));
 
       box.appendChild(panel);
     });

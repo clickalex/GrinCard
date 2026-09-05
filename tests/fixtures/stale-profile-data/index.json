@@ -1,0 +1,13 @@
+{
+  "$comment": [
+    "Test fixture — deliberately stale.",
+    "It names a profile that is not here, which is what a manifest looks like when",
+    "somebody renames or deletes a JSON file in GitHub's web UI and cannot run a build",
+    "to regenerate this list. tests/dom.test.js asserts the cards page copes."
+  ],
+  "generated_at": "2026-09-05",
+  "count": 1,
+  "profiles": [
+    "ghost"
+  ]
+}

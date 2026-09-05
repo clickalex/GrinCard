@@ -46,14 +46,53 @@ function findRoot() {
 
 const found = findRoot();
 
-const INSTALL_HINT =
-  'dev-only test oracles not found. Install them outside the repo:\n' +
-  '  mkdir -p /tmp/oracle && cd /tmp/oracle && npm init -y &&\n' +
-  '    npm i qrcode@1.5.4 jsqr pdfjs-dist @napi-rs/canvas jsdom\n' +
-  '(or set QR_ORACLE_DIR to where you keep them — see tests/oracle.js)';
+/** Every package the full suites compare our output against. */
+const REQUIRED = ['qrcode', 'jsqr', 'pdfjs-dist', '@napi-rs/canvas', 'jsdom'];
 
-/** True when the oracles are installed and the full suites can run. */
-const available = !!found.modules;
+/**
+ * Actually load each one, rather than trusting that a node_modules directory
+ * existing means it is usable.
+ *
+ * The distinction matters. A partial install is easy to end up with — `npm i`
+ * fails on one package (the native `@napi-rs/canvas` binary is the usual
+ * casualty on an unsupported platform) and leaves the rest in place. Judging by
+ * the directory's existence then runs every suite into a confusing
+ * "jsQR is not a function" instead of skipping it, and `npm test` goes red for
+ * somebody who followed the documented install command exactly.
+ */
+const loadable = {};
+const missing = [];
+for (const name of REQUIRED) {
+  let ok = false;
+  if (found.modules) {
+    try {
+      require(path.join(found.modules, name));
+      ok = true;
+    } catch (e) {
+      ok = false;
+    }
+  }
+  loadable[name] = ok;
+  if (!ok) missing.push(name);
+}
+
+function installHint() {
+  const what = missing.length === REQUIRED.length || !found.modules
+    ? 'dev-only test oracles not found.'
+    : 'dev-only test oracles are incomplete — missing: ' + missing.join(', ') + '.';
+  return what + ' Install them outside the repo:\n' +
+    '  mkdir -p ' + found.root + ' && cd ' + found.root + ' && npm init -y &&\n' +
+    '    npm i ' + (missing.length ? missing.map(n => n === 'qrcode' ? 'qrcode@1.5.4' : n).join(' ') : 'qrcode@1.5.4 jsqr pdfjs-dist @napi-rs/canvas jsdom') + '\n' +
+    '(or set QR_ORACLE_DIR to where you keep them — see tests/oracle.js)';
+}
+
+const INSTALL_HINT = installHint();
+
+/** True only when every oracle loads, so the full suites can really run. */
+const available = missing.length === 0;
+
+/** Is one specific oracle usable? For suites that need less than all of them. */
+function has(name) { return !!loadable[name]; }
 
 /** Absolute path into the oracle tree, e.g. oraclePath('pdfjs-dist/legacy/build/pdf.mjs'). */
 function oraclePath(rel) {
@@ -115,6 +154,9 @@ function decodeQr(imageData) {
 
 module.exports = {
   available,
+  has,
+  missing,
+  REQUIRED,
   INSTALL_HINT,
   root: found.root,
   modules: found.modules,

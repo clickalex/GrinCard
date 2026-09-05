@@ -23,6 +23,11 @@ const requestInterceptor = jsdomLib && jsdomLib.requestInterceptor;
 
 /** Skip every page-execution test when jsdom is not installed. */
 const NO_JSDOM = jsdomLib ? false : ORACLE.INSTALL_HINT;
+// One test below parses the PDF it downloads with an independent reader, so it needs
+// pdfjs-dist on top of jsdom. Gating it on jsdom alone meant a partial oracle install
+// — the directory present but that package missing — failed the test instead of
+// skipping it, which reads as a broken PDF generator when nothing is broken.
+const NO_PDFJS = ORACLE.has('pdfjs-dist') ? false : ORACLE.INSTALL_HINT;
 
 const ROOT = path.join(__dirname, '..');
 const { linkableFiles, generatedStubNotice } = require('../tools/check-links.js');
@@ -874,6 +879,63 @@ test('card preview page: shows every template plus QR metadata', { skip: NO_JSDO
   assert.ok(doc.querySelector('#qr-standalone svg'), 'the standalone QR should render');
 });
 
+test('template gallery: every design hands you the exact template_id for your JSON',
+  { skip: NO_JSDOM }, async () => {
+    const { doc, win, errors } = await loadPage('templates/index.html',
+      { settleMs: 900, profileDir: '../examples/' });
+    assert.deepEqual(errors, [], errors.join('\n'));
+
+    const panels = Array.from(doc.querySelectorAll('#templates .panel'));
+    const registered = win.CardTemplates.all().map(t => t.id);
+    assert.equal(panels.length, registered.length,
+      'every registered template should be choosable on this page');
+
+    // This page is where somebody picks a design, and the no-terminal path from here is
+    // editing profile-data/<username>.json on GitHub. So each panel has to give them the
+    // literal string to type — a name alone leaves them guessing at an id.
+    const shown = panels.map(panel => {
+      const value = panel.querySelector('.url-value');
+      assert.ok(value, 'each panel should print the JSON line to copy');
+      const m = /"template_id": "([^"]+)"/.exec(value.textContent);
+      assert.ok(m, 'it should be the literal card_settings line, got: ' + value.textContent);
+      const btn = Array.from(panel.querySelectorAll('button'))
+        .find(b => /copy id/i.test(b.textContent));
+      assert.ok(btn, 'and a button to take it away without retyping it');
+      return m[1];
+    });
+
+    assert.deepEqual([...shown].sort(), [...registered].sort(),
+      'the ids shown must be the real registered ones — a typo here sends somebody ' +
+      'to a design that does not exist, and their card silently falls back');
+  });
+
+test('cards index: a stale manifest lists nothing, not a card for somebody gone',
+  { skip: NO_JSDOM }, async () => {
+    const { doc, errors } = await loadPage('index.html',
+      { settleMs: 700, profileDir: 'tests/fixtures/stale-profile-data/' });
+    assert.deepEqual(errors, [], errors.join('\n'));
+
+    // The fixture manifest names "ghost"; there is no ghost.json. Rendering a card for
+    // somebody whose data never loaded is worse than rendering nothing — it looks like
+    // the site works while the one card the owner cares about is absent.
+    assert.equal(doc.querySelectorAll('#cards .card-index-row').length, 0,
+      'a profile with no data must not become a card');
+    assert.match(doc.getElementById('card-count').textContent, /^0 cards/);
+
+    // And the page should explain itself, because the owner cannot see the manifest from
+    // here and an unexplained empty list reads as a broken deployment.
+    const notice = doc.querySelector('#cards .notice-warn');
+    assert.ok(notice, 'it should say the list is out of date');
+    assert.match(notice.textContent, /ghost/, 'naming the missing profile');
+    assert.match(notice.textContent, /index\.json/, 'and the file to fix');
+
+    // The fix offered has to work with no terminal: somebody who edits JSON in GitHub's
+    // web UI cannot run npm, and telling them to is how a template loses them.
+    assert.match(notice.textContent, /web UI/i);
+    assert.match(notice.textContent, /are not affected|still work/i,
+      'it should say their live links are unaffected');
+  });
+
 test('print sheet page: lays out both sides with mm-sized frames', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('print/index.html', { search: '?u=rahul123', settleMs: 800, profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
@@ -1063,7 +1125,7 @@ test('qr generator: options change the sheet and persist', { skip: NO_JSDOM }, a
   assert.equal(doc.querySelectorAll('#s-preview .sheet-page').length >= 1, true);
 });
 
-test('qr generator: the PDF download is a real PDF with the right page count', { skip: NO_JSDOM }, async () => {
+test('qr generator: the PDF download is a real PDF with the right page count', { skip: NO_JSDOM || NO_PDFJS }, async () => {
   const { doc, win, errors } = await loadPage('qr-generator/index.html', { settleMs: 600 });
   assert.deepEqual(errors, [], errors.join('\n'));
   click(doc, 'tab-sheet');

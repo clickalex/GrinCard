@@ -145,18 +145,52 @@
     ]);
   }
 
-  function renderEmpty(target) {
+  /**
+   * The index is generated, and a person editing JSON in GitHub's web UI cannot run a
+   * generator. So both ways of refreshing it are offered, web UI first: this page is
+   * often the first thing a new fork owner sees, and telling them to install Node.js
+   * is how a template loses them.
+   */
+  function refreshHint() {
+    return 'Add your username to the <code>profiles</code> list in ' +
+      '<code>profile-data/index.json</code> — one line, editable right in GitHub\'s web ' +
+      'UI — or run <code>npm run build</code> if you have Node.js.';
+  }
+
+  /**
+   * Shown when the manifest names profiles that are not there any more: somebody
+   * renamed or deleted a JSON file without regenerating the index. Their cards still
+   * work, because /c/<username>/ loads <username>.json by name and 404.html serves the
+   * path either way. Only this list is stale, and saying so beats looking broken.
+   */
+  function staleNotice(missing) {
+    return el('div', { class: 'notice notice-warn mt2' }, [
+      el('strong', { text: 'This list is out of date.' }),
+      el('p', { class: 'small', html:
+        'It still names ' + missing.map(function (name) {
+          return '<code>' + escapeHtml(name) + '</code>';
+        }).join(', ') + ', but there is no matching file in <code>profile-data/</code>.' }),
+      el('p', { class: 'small', html:
+        'Your links are not affected — <code>' + escapeHtml(Store.siteRoot()) +
+        'c/&lt;username&gt;/</code> works whether or not this page is current. ' + refreshHint() })
+    ]);
+  }
+
+  function renderEmpty(target, missing) {
     target.innerHTML = '';
     target.appendChild(el('div', { class: 'empty-links' }, [
-      el('p', { text: 'No profiles yet.' }),
+      el('p', { text: missing && missing.length ? 'No cards to list yet.' : 'No profiles yet.' }),
       el('p', { class: 'small', html:
-        'Add a JSON file to <code>profile-data/</code>, named after the username you want in your URL, ' +
-        'then run <code>npm run build</code>. Or copy one of the ' +
+        'Add a JSON file to <code>profile-data/</code>, named after the username you want ' +
+        'in your URL — <code>profile-data/riley.json</code> becomes ' +
+        '<code>/c/riley/</code>. Or copy one of the ' +
         '<a href="examples/">example profiles</a> and edit it.' }),
+      el('p', { class: 'small', html: refreshHint() }),
       el('p', {}, [
         el('a', { class: 'btn', href: 'dashboard/', text: 'Open the dashboard' })
       ])
     ]));
+    if (missing && missing.length) target.appendChild(staleNotice(missing));
   }
 
   function start() {
@@ -166,19 +200,42 @@
     var limitEl = document.getElementById('limit-public');
     if (limitEl) limitEl.textContent = String(Access.LIMITS.maxPublicLinks);
 
-    Store.listProfiles()
-      .then(function (summaries) {
+    Store.listProfilesDetailed()
+      .then(function (result) {
+        var summaries = result.profiles;
+        // Usernames the manifest still names, but which have no file any more.
+        var missing = result.missing.slice();
+
         if (!summaries.length) {
           if (firstRun) firstRun.hidden = false;
           if (count) count.textContent = '0 cards';
-          renderEmpty(target);
+          renderEmpty(target, missing);
           return;
         }
 
         // Load the full profiles so the counts and the starter flag are accurate.
         return Promise.all(summaries.map(function (s) {
           return Store.loadProfile(s.username).then(function (p) { return { summary: s, profile: p }; });
-        })).then(function (rows) {
+        })).then(function (loaded) {
+          // A profile can still fail here — malformed JSON, or a localStorage copy that
+          // was cleared mid-flight — so keep the guard even though the manifest names
+          // were already resolved above. Rendering a card for somebody whose data did
+          // not load is worse than rendering nothing: it looks like the site works while
+          // the one card the owner cares about is missing.
+          var rows = loaded.filter(function (r) { return !!r.profile; });
+          loaded.forEach(function (r) {
+            if (!r.profile && missing.indexOf(r.summary.username) < 0) {
+              missing.push(r.summary.username);
+            }
+          });
+
+          if (!rows.length) {
+            if (firstRun) firstRun.hidden = false;
+            if (count) count.textContent = '0 cards';
+            renderEmpty(target, missing);
+            return;
+          }
+
           var starterOnly = rows.every(function (r) {
             return (r.summary._starter) || (r.profile && r.profile._starter);
           });
@@ -200,6 +257,8 @@
             list.appendChild(row);
           });
           target.appendChild(list);
+
+          if (missing.length) target.appendChild(staleNotice(missing));
 
           target.appendChild(el('p', { class: 'tiny muted mt2', html:
             'Every URL above is <code>' + escapeHtml(Store.siteRoot()) + 'c/&lt;username&gt;/</code>, derived ' +

@@ -58,33 +58,42 @@
       </div>
       <ol class="steps">
         <li>
-          <strong>Rename the starter profile.</strong>
+          <strong>Create your profile file.</strong>
           <span class="step-body">
-            <code>profile-data/yourname.json</code> → <code>profile-data/&lt;your-username&gt;.json</code>,
-            and change <code>"username"</code> inside to match the filename exactly.
-            That username becomes your printed URL.
+            In <code>profile-data/</code>, add a JSON file named after the username you want in your
+            URL — <code>profile-data/riley.json</code> becomes <code>/c/riley/</code>. Set
+            <code>"username"</code> inside to match the filename exactly. On GitHub you can do this
+            in the browser: <em>Add file → Create new file</em>, or edit the starter
+            <code>yourname.json</code> and save it under your own name. Nothing to install.
           </span>
         </li>
         <li>
-          <strong>Edit your links in that one JSON file.</strong>
+          <strong>Pick a look and edit your links.</strong>
           <span class="step-body">
-            Or use the <a href="dashboard/">dashboard</a> to edit them with a form and see the tiers
-            behave. Public links show to anyone; <code>"private"</code> ones only appear for a
-            temporary token or an approved follower.
+            The <a href="dashboard/">dashboard</a> has a visual template picker and a form for your
+            links, so you can see the tiers behave and then use <em>Copy</em> to take the finished
+            JSON back to your repo. Hand-editing works too. Public links show to anyone;
+            <code>"visibility": "followers_only"</code> ones only appear for a temporary token or an
+            approved follower.
           </span>
         </li>
         <li>
-          <strong>Generate your link and print it.</strong>
+          <strong>Share your link and print the card.</strong>
           <span class="step-body">
-            <code>npm run build</code> writes <code>/c/&lt;your-username&gt;/</code> — the permanent URL
-            that goes on the card. It appears below with a copy button and a QR code.
-            Then open <a href="print/">Print</a> for a press-ready sheet.
+            Your link is live as soon as that file is deployed:
+            <code>&lt;your-site&gt;/c/&lt;your-username&gt;/</code>. It appears below with a copy
+            button and a QR code. Open <a href="print/">Print</a> for a press-ready sheet — the QR
+            always encodes this permanent URL, so the card never goes out of date.
           </span>
         </li>
       </ol>
       <p class="tiny muted">
-        Deploying to GitHub Pages? <a href="SETUP.md">SETUP.md</a> walks through enabling it, and
-        <code>.github/workflows/pages.yml</code> regenerates your links on every push so you never have to.
+        No terminal, no Node.js, no build step: <code>/c/&lt;username&gt;/</code> is served by the
+        site's own fallback the moment your JSON is there. Optional niceties if you do have Node —
+        <code>npm run build</code> pre-renders each link to a real page (so link previews in chat
+        apps resolve instead of hitting a 404 status) and refreshes this list.
+        <a href="SETUP.md">SETUP.md</a> covers deploying to GitHub Pages, where
+        <code>.github/workflows/pages.yml</code> does both on every push.
       </p>
     </section>
 

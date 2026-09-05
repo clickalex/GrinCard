@@ -119,15 +119,28 @@ test('the stub escapes a username that could break out of its attribute', () => 
   assert.match(html, /&lt;/);
 });
 
-test('the manifest lists usernames and says it is generated', () => {
+test('the manifest lists usernames and explains both ways to refresh it', () => {
   const manifest = buildTemplates && buildLinks.manifest([
     { username: 'rahul' }, { username: 'priya' }
   ]);
   assert.deepEqual(manifest.profiles, ['rahul', 'priya']);
   assert.equal(manifest.count, 2);
-  assert.ok(manifest.$comment.some(line => /do not edit by hand/i.test(line)));
-  assert.ok(manifest.$comment.some(line => /npm run build/i.test(line)),
+
+  const comment = manifest.$comment.join('\n');
+  // Still attributed to the tool, so nobody mistakes it for hand-authored data.
+  assert.match(comment, /build-links\.js/);
+  assert.match(comment, /npm run build/i,
     'it should tell the next person how to regenerate it');
+
+  // But it must not forbid editing. Somebody deploying from GitHub's web UI has no
+  // terminal and no Node.js; adding one username to "profiles" is the only way their
+  // card gets listed. A "do not edit by hand" banner makes the template unusable
+  // without a build step — the opposite of what a public template repo is for.
+  assert.ok(!/do not edit by hand/i.test(comment),
+    'hand-editing is a supported path for people with no build step');
+  assert.match(comment, /"profiles"/, 'it should name the array to edit');
+  assert.match(comment, /no Node\.js|web UI/i,
+    'and say plainly that the browser editor is enough');
 });
 
 test('the directory page links every profile and never invents one', () => {

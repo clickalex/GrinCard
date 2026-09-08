@@ -52,6 +52,22 @@
 
   <div id="alerts"></div>
 
+  <section class="panel demo-profile-links" aria-labelledby="h-demo-profiles">
+    <div class="panel-head">
+      <h2 id="h-demo-profiles">Demo profiles</h2>
+      <span class="hint">Open each profile as a Pinterest-style post page</span>
+    </div>
+    <div class="demo-profile-grid">
+      <div class="demo-profile-link"><strong>Ananya Mehta</strong><span>Brand Designer</span><a href="../profile/?u=ananya-design&amp;demo=1" target="_blank" rel="noopener">Open profile</a><a href="?u=ananya-design&amp;demo=1">Open in dashboard</a></div>
+      <div class="demo-profile-link"><strong>Kabir Singh</strong><span>Fitness Coach</span><a href="../profile/?u=kabir-fit&amp;demo=1" target="_blank" rel="noopener">Open profile</a><a href="?u=kabir-fit&amp;demo=1">Open in dashboard</a></div>
+      <div class="demo-profile-link"><strong>Sana Khan</strong><span>Food Creator</span><a href="../profile/?u=sana-eats&amp;demo=1" target="_blank" rel="noopener">Open profile</a><a href="?u=sana-eats&amp;demo=1">Open in dashboard</a></div>
+      <div class="demo-profile-link"><strong>Dev Malhotra</strong><span>Product Engineer</span><a href="../profile/?u=dev-builds&amp;demo=1" target="_blank" rel="noopener">Open profile</a><a href="?u=dev-builds&amp;demo=1">Open in dashboard</a></div>
+      <div class="demo-profile-link"><strong>Rahul Kumar</strong><span>Freelance Illustrator</span><a href="../profile/?u=rahul123&amp;demo=1" target="_blank" rel="noopener">Open profile</a><a href="?u=rahul123&amp;demo=1">Open in dashboard</a></div>
+      <div class="demo-profile-link"><strong>Meera Sharma</strong><span>Owner, Sharma Provisions</span><a href="../profile/?u=meera9&amp;demo=1" target="_blank" rel="noopener">Open profile</a><a href="?u=meera9&amp;demo=1">Open in dashboard</a></div>
+    </div>
+    <p class="help">These are fixture profiles in <code>examples/</code>. Use the dashboard link to inspect their JSON settings and link cards without changing your own profile.</p>
+  </section>
+
   <div class="grid grid-side">
     <div class="stack">
 
@@ -149,6 +165,46 @@
         <div id="template-picker" class="template-picker"></div>
 
         <div class="field mt2">
+          <label for="f-card-size">Card size</label>
+          <select id="f-card-size">
+            <option value="standard">Standard business card · 89 × 51 mm</option>
+            <option value="square">Square social card · 65 × 65 mm</option>
+            <option value="mini">Mini card · 70 × 40 mm</option>
+            <option value="postcard">Postcard · 100 × 70 mm</option>
+          </select>
+          <p class="help">The selected dimensions are saved in <code>card_settings.size</code> and used for preview, PNG, SVG and PDF.</p>
+        </div>
+
+        <div class="field">
+          <label for="f-background-file">Social post background image</label>
+          <input type="file" id="f-background-file" accept="image/*" class="file-input">
+          <input type="url" id="f-background-url" placeholder="…or paste an image URL" class="mt1">
+          <div class="btn-row mt1"><button type="button" class="btn btn-ghost btn-sm" id="btn-background-clear">Remove background</button></div>
+          <p class="help">The image fills the front of the card and is stored in the exported JSON. A dark overlay is added automatically so the name stays readable.</p>
+        </div>
+
+        <div class="field mt2">
+          <label>Shared profile style</label>
+          <div class="grid grid-2-tight">
+            <select id="f-profile-layout" aria-label="Profile layout">
+              <option value="pinterest">Pinterest cards · image-friendly</option>
+              <option value="stack">Classic link stack</option>
+            </select>
+            <select id="f-link-shape" aria-label="Link card shape">
+              <option value="rounded">Rounded cards</option>
+              <option value="pill">Pill cards</option>
+              <option value="square">Square cards</option>
+            </select>
+          </div>
+          <div class="grid grid-2-tight mt1">
+            <label class="small">Page color <input type="color" id="f-profile-bg" value="#f6f6f4"></label>
+            <label class="small">Link color <input type="color" id="f-link-bg" value="#ffffff"></label>
+          </div>
+          <input type="url" id="f-profile-bg-image" class="mt1" placeholder="Optional page background image URL">
+          <p class="help">These settings are saved in JSON and control the public link page. Each link can also have its own optional image below.</p>
+        </div>
+
+        <div class="field mt2">
           <label for="f-profile-url">Your permanent URL — what the QR encodes</label>
           <div class="url-row">
             <input type="text" id="f-profile-url" readonly spellcheck="false"
@@ -187,8 +243,34 @@
       <section class="panel" id="share-controls" aria-labelledby="h-share">
         <div class="panel-head">
           <h2 id="h-share">Share</h2>
-          <span class="hint">Two ways to reveal private links.</span>
+          <span class="hint">Keep your admin and visitor links separate.</span>
         </div>
+
+        <div class="share-links" aria-label="Profile links">
+          <div class="share-link-card">
+            <div class="share-link-copy">
+              <strong>Open profile link</strong>
+              <span class="help">Share this with visitors. It opens the public profile.</span>
+              <input type="url" id="f-open-profile-url" readonly spellcheck="false" aria-label="Open profile link">
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-sm" id="btn-copy-open-profile">Copy</button>
+              <a class="btn btn-ghost btn-sm" id="btn-open-profile" href="#" target="_blank" rel="noopener">Open</a>
+            </div>
+          </div>
+          <div class="share-link-card">
+            <div class="share-link-copy">
+              <strong>Admin link</strong>
+              <span class="help">Use this separate link to edit this profile in the dashboard.</span>
+              <input type="url" id="f-admin-url" readonly spellcheck="false" aria-label="Admin link">
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-sm" id="btn-copy-admin">Copy</button>
+              <a class="btn btn-ghost btn-sm" id="btn-open-admin" href="#" target="_blank" rel="noopener">Open</a>
+            </div>
+          </div>
+        </div>
+        <p class="help">The links use different routes: <code>/c/username/</code> for visitors and <code>/dashboard/?u=username</code> for editing. In this static V1, the admin route is not password-protected; real authentication is planned for V2.</p>
 
         <h3 class="sub-head">Quick share — temporary link</h3>
         <div class="grid grid-2-tight">

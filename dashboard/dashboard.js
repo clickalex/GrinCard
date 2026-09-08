@@ -107,6 +107,12 @@
     return Store.profileUrlFor(username || (state.profile && state.profile.username), profile);
   }
 
+  /** The editor URL is intentionally different from the visitor URL. */
+  function adminUrlFor(username) {
+    if (!username) return Store.siteRoot() + 'dashboard/';
+    return Store.siteRoot() + 'dashboard/?u=' + encodeURIComponent(username);
+  }
+
   function blankProfile() {
     return {
       username: '',
@@ -171,6 +177,14 @@
     p.tagline = $('f-tagline').value.trim();
     p.profile_url = ($('f-profile-url-override').value || '').trim();
     p.card_settings.show_photo = $('f-show-photo').checked;
+    p.card_settings.size = $('f-card-size').value || 'standard';
+    p.card_settings.background_image = ($('f-background-url').value || '').trim();
+    p.profile_settings = p.profile_settings || {};
+    p.profile_settings.layout = $('f-profile-layout').value || 'pinterest';
+    p.profile_settings.link_shape = $('f-link-shape').value || 'rounded';
+    p.profile_settings.page_color = $('f-profile-bg').value || '#f6f6f4';
+    p.profile_settings.link_color = $('f-link-bg').value || '#ffffff';
+    p.profile_settings.page_background_image = $('f-profile-bg-image').value.trim();
     return p;
   }
 
@@ -224,12 +238,26 @@
     $('f-role').value = p.designation || '';
     $('f-tagline').value = p.tagline || '';
     var derived = defaultProfileUrl(p.username, p);
+    var adminUrl = adminUrlFor(p.username);
     $('f-profile-url').value = derived;
     $('btn-open-url').href = derived;
+    $('f-open-profile-url').value = derived;
+    $('btn-open-profile').href = derived;
+    $('f-admin-url').value = adminUrl;
+    $('btn-open-admin').href = adminUrl;
     // Show an override only if one was actually set, so the field stays empty by default.
     $('f-profile-url-override').value =
       (p.profile_url && /^[a-z][a-z0-9+.-]*:\/\//i.test(p.profile_url)) ? p.profile_url : '';
     $('f-show-photo').checked = p.card_settings.show_photo !== false;
+    $('f-card-size').value = p.card_settings.size || 'standard';
+    $('f-background-url').value = /^https?:|^data:/i.test(p.card_settings.background_image || '')
+      ? p.card_settings.background_image : '';
+    var ps = p.profile_settings || {};
+    $('f-profile-layout').value = ps.layout || 'pinterest';
+    $('f-link-shape').value = ps.link_shape || 'rounded';
+    $('f-profile-bg').value = ps.page_color || '#f6f6f4';
+    $('f-link-bg').value = ps.link_color || '#ffffff';
+    $('f-profile-bg-image').value = ps.page_background_image || '';
     $('username-prefix').textContent = '/c/';
 
     var preview = $('photo-preview');
@@ -306,6 +334,11 @@
             type: 'url', value: link.url, placeholder: 'https://…',
             'aria-label': 'Link ' + (index + 1) + ' URL',
             oninput: function (e) { link.url = e.target.value; markDirty(); }
+          }),
+          el('input', {
+            type: 'url', value: link.image_url || '', placeholder: 'Optional post image URL',
+            'aria-label': 'Link ' + (index + 1) + ' image URL',
+            oninput: function (e) { link.image_url = e.target.value.trim(); markDirty(); }
           })
         ]),
         el('div', { class: 'link-main' }, [
@@ -807,6 +840,21 @@
     reader.readAsDataURL(file);
   }
 
+  function onBackgroundFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { alert('danger', 'That file is not an image.'); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      Exporter.toEmbeddedDataUrl(reader.result, 1600, 0.9).then(function (dataUrl) {
+        state.profile.card_settings.background_image = dataUrl;
+        markDirty(); fillForm(); renderPreview();
+        alert('ok', 'Background image resized and embedded. Save to keep it in the JSON.');
+      }).catch(function (err) { alert('danger', 'Could not read that image: ' + escapeHtml(err.message)); });
+    };
+    reader.onerror = function () { alert('danger', 'Could not read that file.'); };
+    reader.readAsDataURL(file);
+  }
+
   // ---------------------------------------------------------------------------
   // JSON export
   // ---------------------------------------------------------------------------
@@ -871,6 +919,25 @@
       $('f-photo-file').value = '';
       markDirty(); fillForm(); renderPreview();
     });
+    $('f-background-file').addEventListener('change', function () { onBackgroundFile(this.files && this.files[0]); });
+    $('f-background-url').addEventListener('change', function () {
+      state.profile.card_settings.background_image = this.value.trim();
+      markDirty(); renderPreview();
+    });
+    $('f-card-size').addEventListener('change', function () {
+      state.profile.card_settings.size = this.value;
+      markDirty(); renderPreview();
+    });
+    ['f-profile-layout', 'f-link-shape', 'f-profile-bg', 'f-link-bg', 'f-profile-bg-image'].forEach(function (id) {
+      $(id).addEventListener('input', function () { readForm(); markDirty(); renderPreview(); });
+      $(id).addEventListener('change', function () { readForm(); markDirty(); renderPreview(); });
+    });
+    $('btn-background-clear').addEventListener('click', function () {
+      state.profile.card_settings.background_image = '';
+      $('f-background-file').value = '';
+      $('f-background-url').value = '';
+      markDirty(); renderPreview();
+    });
 
     $('btn-add-link').addEventListener('click', addLink);
     $('btn-save').addEventListener('click', function () { save(); });
@@ -888,6 +955,19 @@
       copy($('f-profile-url').value);
       button.textContent = 'Copied';
       setTimeout(function () { button.textContent = label; }, 1400);
+    });
+
+    function copyLinkFrom(inputId, button) {
+      var label = button.textContent;
+      copy($(inputId).value);
+      button.textContent = 'Copied';
+      setTimeout(function () { button.textContent = label; }, 1400);
+    }
+    $('btn-copy-open-profile').addEventListener('click', function (ev) {
+      copyLinkFrom('f-open-profile-url', ev.currentTarget);
+    });
+    $('btn-copy-admin').addEventListener('click', function (ev) {
+      copyLinkFrom('f-admin-url', ev.currentTarget);
     });
 
     Array.prototype.forEach.call($('ecl-picker').children, function (btn) {

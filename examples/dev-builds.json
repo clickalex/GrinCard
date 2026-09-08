@@ -1,0 +1,56 @@
+{
+  "_comment": [
+    "Fixture profile for the demo gallery and dashboard demo links."
+  ],
+  "username": "dev-builds",
+  "display_name": "Dev Malhotra",
+  "designation": "Product Engineer",
+  "tagline": "Small tools, useful software and open source",
+  "photo_url": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmMmIxMzQiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNkMTcxMWYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjEwMCIgeT0iMTMyIiBmb250LWZhbWlseT0iSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iODgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5SSzwvdGV4dD48L3N2Zz4=",
+  "theme": "template-1",
+  "created_at": "2026-09-04T10:00:00Z",
+  "links": [
+    {
+      "id": "lnk_1",
+      "label": "Instagram",
+      "url": "https://instagram.com/dev_builds",
+      "visibility": "public",
+      "order": 1,
+      "image_url": "https://picsum.photos/seed/dev-builds1/800/500"
+    },
+    {
+      "id": "lnk_2",
+      "label": "Website",
+      "url": "https://example.com/dev-builds",
+      "visibility": "public",
+      "order": 2,
+      "image_url": "https://picsum.photos/seed/dev-builds2/800/500"
+    },
+    {
+      "id": "lnk_3",
+      "label": "Newsletter",
+      "url": "https://example.com/dev-builds/newsletter",
+      "visibility": "public",
+      "order": 3,
+      "image_url": "https://picsum.photos/seed/dev-builds3/800/500"
+    },
+    {
+      "id": "lnk_4",
+      "label": "Private guide",
+      "url": "https://example.com/dev-builds/guide",
+      "visibility": "followers_only",
+      "order": 4
+    }
+  ],
+  "card_settings": {
+    "template_id": "template-1",
+    "show_photo": true,
+    "size": "standard"
+  },
+  "profile_settings": {
+    "layout": "pinterest",
+    "link_shape": "rounded",
+    "page_color": "#f6f6f4",
+    "link_color": "#ffffff"
+  }
+}

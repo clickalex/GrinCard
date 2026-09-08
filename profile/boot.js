@@ -79,6 +79,16 @@
    * 404.html are deliberately tiny, so they ship almost no markup and let this
    * build the same shell `profile/index.html` has.
    */
+  /**
+   * Printed/shared profile URLs are visitor-only pages. Keep the site navigation
+   * out of them so sharing a profile never exposes Dashboard, Templates, or other
+   * owner tools. The /profile/ preview can still keep the navigation for owners.
+   */
+  function isSharedProfile() {
+    return /\/c\/[^/?#]+\/?$/.test(location.pathname) ||
+      (document.body && document.body.getAttribute('data-profile-dir') === 'c');
+  }
+
   function ensureShell() {
     if (document.getElementById('profile-root')) return;
 
@@ -134,8 +144,12 @@
     main.id = 'main';
     main.appendChild(shell);
 
-    document.body.insertBefore(skip, document.body.firstChild);
-    document.body.appendChild(header);
+    // A shared /c/<username>/ URL is intentionally a focused visitor page.
+    // Do not add the owner/site navigation there.
+    if (!isSharedProfile()) {
+      document.body.insertBefore(skip, document.body.firstChild);
+      document.body.appendChild(header);
+    }
     document.body.appendChild(main);
   }
 

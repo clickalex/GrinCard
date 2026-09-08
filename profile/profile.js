@@ -64,6 +64,10 @@
   /** Apply a template's palette so the page matches the printed card. */
   function applyTheme(profile) {
     var vars = TPL.toCssVars(TPL.get(profile.card_settings && profile.card_settings.template_id), profile);
+    var page = profile.profile_settings || {};
+    vars['--profile-page-color'] = page.page_color || vars['--bg'] || '#f6f6f4';
+    vars['--profile-link-color'] = page.link_color || vars['--surface'] || '#ffffff';
+    vars['--profile-page-image'] = page.page_background_image ? 'url("' + String(page.page_background_image).replace(/"/g, '%22') + '")' : 'none';
     Object.keys(vars).forEach(function (name) {
       document.documentElement.style.setProperty(name, vars[name]);
     });
@@ -110,8 +114,12 @@
   function linkNode(link, access) {
     var unlockedByToken = access.tier === 'temporary' && Access.isPrivate(link);
     var card = el('a', {
-      class: 'link-card', href: link.url, target: '_blank', rel: 'noopener noreferrer me'
+      class: 'link-card' + (link.image_url ? ' has-post-image' : ''), href: link.url, target: '_blank', rel: 'noopener noreferrer me'
     }, [
+      // Every link gets a post-style visual panel. If no image is supplied,
+      // CSS provides a colour/gradient cover so the page never falls back to a
+      // plain vertical link stack in Pinterest mode.
+      el('span', { class: 'post-image', 'aria-hidden': 'true' }),
       el('span', { class: 'icon', 'aria-hidden': 'true', text: iconFor(link.url) }),
       el('span', { class: 'body' }, [
         el('span', { class: 'label', text: link.label }),
@@ -121,6 +129,10 @@
         ? el('span', { class: 'badge badge-private flag', text: 'Unlocked' })
         : null
     ]);
+    if (link.image_url) {
+      var image = card.querySelector('.post-image');
+      if (image) image.style.backgroundImage = 'url("' + String(link.image_url).replace(/"/g, '%22') + '")';
+    }
     if (unlockedByToken) card.setAttribute('data-just-unlocked', 'true');
     return el('li', {}, [card]);
   }
@@ -198,6 +210,9 @@
     var root = root_();
     root.innerHTML = '';
     applyTheme(profile);
+    var profileSettings = profile.profile_settings || {};
+    root.setAttribute('data-layout', profileSettings.layout || 'pinterest');
+    root.setAttribute('data-link-shape', profileSettings.link_shape || 'rounded');
     document.title = profile.display_name + ' — QR Link Card';
 
     root.appendChild(el('header', { class: 'profile-head' }, [

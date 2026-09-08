@@ -42,6 +42,28 @@
   color: var(--page-text); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
 }
 
+.demo-profile-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.demo-profile-link { display: flex; flex-direction: column; gap: 3px; padding: 12px; border: 1px solid var(--page-border); border-radius: 12px; background: #fbfaf7; }
+.demo-profile-link strong { font-size: 14px; }
+.demo-profile-link span { color: var(--page-muted); font-size: 12px; margin-bottom: 5px; }
+.demo-profile-link a { font-size: 12px; color: var(--page-text); text-decoration: underline; text-underline-offset: 2px; }
+
+/* The visitor URL and editor URL are deliberately presented as two separate
+   controls, so owners do not accidentally send the dashboard to visitors. */
+.share-links { display: grid; gap: 12px; margin: 4px 0 10px; }
+.share-link-card {
+  display: flex; gap: 12px; align-items: flex-end; justify-content: space-between;
+  padding: 12px; border: 1px solid var(--page-border); border-radius: 12px; background: #fbfaf7;
+}
+.share-link-copy { min-width: 0; flex: 1 1 auto; }
+.share-link-copy strong, .share-link-copy .help { display: block; }
+.share-link-copy input { margin-top: 8px; font-family: var(--mono); font-size: 12px; }
+.share-link-card .btn-row { flex: 0 0 auto; }
+@media (max-width: 620px) {
+  .share-link-card { display: block; }
+  .share-link-card .btn-row { margin-top: 10px; }
+}
+
 /* link rows */
 .link-row { display: grid; gap: 10px; }
 .link-row .link-main { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

@@ -40,7 +40,9 @@ never changes however you edit the JSON behind it.
 
 Prefer a form to raw JSON? The [dashboard](dashboard/) has a visual template picker, edits
 your links with a live card preview, and its **Copy** button hands you the finished JSON to
-paste back into GitHub.
+paste back into GitHub. It also shows two separate sharing URLs: an **Open profile link** for
+visitors and an **Admin link** for editing. Shared profile pages do not expose the Dashboard or
+Templates navigation.
 
 <details>
 <summary><strong>Or do it on your own computer</strong> (if you have Node.js and would like to preview locally)</summary>
@@ -80,7 +82,7 @@ These run on the deployed copy of this repository, using the fixture profiles in
 
 | Page | What it shows |
 | --- | --- |
-| [Example profiles](https://clickalex.github.io/GrinCard/examples/) | Both fixtures, with a link for each of the four tiers |
+| [Example profiles](https://clickalex.github.io/GrinCard/examples/) | Six demo profiles, with a link for each of the four tiers |
 | [Public view](https://clickalex.github.io/GrinCard/profile/?u=rahul123&demo=1) | What a stranger's phone opens |
 | [Temporary link](https://clickalex.github.io/GrinCard/profile/?u=rahul123&t=temp_demo_live&demo=1) | One private link unlocked, with an expiry countdown |
 | [Expired temporary link](https://clickalex.github.io/GrinCard/profile/?u=rahul123&t=temp_demo_expired&demo=1) | The graceful fallback — no error page, just the public view |
@@ -98,10 +100,16 @@ Every one of those pages is in this repository and works offline once cloned.
 
 ## What you get
 
-**The card** — 89 × 51 mm, the ISO/IEC 7810 ID-1 size that every card printer and print
-shop already understands. Front: photo (or initials), name, role, tagline. Back: a QR code
-of at least 20 mm with a proper quiet zone, plus your name and URL in text so the card still
-works if the code is damaged.
+**The card** — the standard 89 × 51 mm business-card size by default, with Square (65 × 65
+mm), Mini (70 × 40 mm) and Postcard (100 × 70 mm) options in the dashboard. Front: photo (or
+initials), name, role, tagline and an optional social-post background image. Back: a QR code
+with a proper quiet zone, plus your name and URL in text so the card still works if the code is
+damaged.
+
+**Pinterest-style profile pages** — shared links can appear as visual post cards instead of a
+plain stack. Choose a Pinterest grid or classic stack, rounded/pill/square card shapes, page and
+card colours, a page background image, and an optional `image_url` for every link. These settings
+are stored in the profile JSON, so the shared `/c/<username>/` page updates from the same source.
 
 **Vector print output** — the download is a real PDF with vector paths and selectable text,
 written at exactly 89 × 51 mm. Not a screenshot of a webpage. Print it at 100% and it is
@@ -124,6 +132,34 @@ a day. When it expires, visitors fall back to the public view instead of hitting
 
 **A QR generator** — paste a list of URLs, get an A4 sheet of QR codes with labels. Useful
 for stickers, table tents, event badges, or a wall of links in a shop.
+
+**Profile and card settings in JSON** — the dashboard writes visual choices directly into your
+profile file. For example:
+
+```json
+{
+  "profile_settings": {
+    "layout": "pinterest",
+    "link_shape": "rounded",
+    "page_color": "#f6f6f4",
+    "link_color": "#ffffff",
+    "page_background_image": "https://example.com/page.jpg"
+  },
+  "links": [
+    {
+      "id": "lnk_1",
+      "label": "Portfolio",
+      "url": "https://example.com",
+      "visibility": "public",
+      "image_url": "https://example.com/portfolio-cover.jpg"
+    }
+  ],
+  "card_settings": {
+    "size": "standard",
+    "background_image": "data:image/jpeg;base64,..."
+  }
+}
+```
 
 **Contributed card templates** — a template is one self-registering file in
 `card-templates/community/`, validated by `npm run validate` and rendered in the gallery beside

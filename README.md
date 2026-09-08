@@ -40,9 +40,10 @@ never changes however you edit the JSON behind it.
 
 Prefer a form to raw JSON? The [dashboard](dashboard/) has a visual template picker, edits
 your links with a live card preview, and its **Copy** button hands you the finished JSON to
-paste back into GitHub. It also shows two separate sharing URLs: an **Open profile link** for
-visitors and an **Admin link** for editing. Shared profile pages do not expose the Dashboard or
-Templates navigation.
+paste back into GitHub. The dashboard loads the **demo account** with its shareable link
+already filled in (`https://YOU.github.io/REPO/c/yourname/`). Copy this repository, update
+`profile-data/yourname.json`, turn on Pages — that JSON is the whole profile. Shared profile
+pages do not expose the Dashboard or Templates navigation.
 
 <details>
 <summary><strong>Or do it on your own computer</strong> (if you have Node.js and would like to preview locally)</summary>

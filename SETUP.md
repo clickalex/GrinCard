@@ -82,7 +82,9 @@ press-ready sheet. See [docs/PRINTING.md](docs/PRINTING.md) for the card specifi
 **Prefer forms to JSON?** Open [`dashboard/`](dashboard/) on your deployed site: it has a
 visual template picker, edits your links with a form, previews the card live, and its
 **Copy** button gives you the finished JSON to paste back into
-`profile-data/<your-username>.json` on GitHub.
+`profile-data/<your-username>.json` on GitHub. The dashboard's **Your shareable link** panel
+shows the demo account's public URL immediately. Copy this repository, edit that JSON (rename
+the file to you), enable Pages — the same `/c/<you>/` link then works on your copy.
 
 That is the whole thing. Day-to-day, you edit one JSON file and commit.
 

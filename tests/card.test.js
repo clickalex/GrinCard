@@ -254,6 +254,40 @@ async function renderPage(bytes, pageNum, scale) {
 // card renderer
 // ---------------------------------------------------------------------------
 
+test('Store.githubPagesIdentity and githubPagesRoot describe a Pages deployment', () => {
+  try {
+    Store.setSiteRoot('https://alice.github.io/my-card/');
+    assert.deepEqual(Store.githubPagesIdentity(), { owner: 'alice', repo: 'my-card' });
+    assert.equal(Store.isUpstreamDemo(), false);
+    assert.equal(Store.githubPagesRoot('alice', 'my-card'), 'https://alice.github.io/my-card/');
+    assert.equal(Store.githubPagesRoot('Alice', 'my-card'), 'https://alice.github.io/my-card/',
+      'the github.io host is always lowercase');
+
+    Store.setSiteRoot('https://clickalex.github.io/GrinCard/');
+    assert.deepEqual(Store.githubPagesIdentity(), { owner: 'clickalex', repo: 'GrinCard' });
+    assert.equal(Store.isUpstreamDemo(), true);
+
+    Store.setSiteRoot('https://alice.github.io/');
+    assert.deepEqual(Store.githubPagesIdentity(), { owner: 'alice', repo: '' });
+    assert.equal(Store.githubPagesRoot('alice', ''), 'https://alice.github.io/');
+    assert.equal(Store.githubPagesRoot('alice', 'alice.github.io'), 'https://alice.github.io/',
+      'a user-site repo name is the host, not a project path');
+
+    Store.setSiteRoot('http://localhost:8080/');
+    assert.equal(Store.githubPagesIdentity(), null);
+    assert.equal(Store.isUpstreamDemo(), false);
+
+    Store.setSiteRoot('https://cards.example.com/');
+    assert.equal(Store.githubPagesIdentity(), null);
+
+    assert.equal(Store.githubPagesRoot('', 'x'), '');
+    assert.equal(Store.githubPagesRoot('bad user', 'x'), '');
+    assert.equal(Store.githubPagesRoot('you', 'GrinCard'), 'https://you.github.io/GrinCard/');
+  } finally {
+    Store.setSiteRoot(null);
+  }
+});
+
 test('card geometry is a real business card', () => {
   const card = Card.buildCard(PROFILE, { profileUrl: PROFILE_URL });
   assert.equal(card.widthMm, 89);

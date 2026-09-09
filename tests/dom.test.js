@@ -1510,6 +1510,38 @@ test('the tier switcher is a demo affordance and stays off a real card', { skip:
   assert.ok(real.doc.querySelector('.link-card'), 'but it must still render the links');
 });
 
+test('demo profile links hide the owner navigation, like the shareable link', { skip: NO_JSDOM }, async () => {
+  // The printed /c/<username>/ shareable link is a focused visitor page with no
+  // owner tools (Dashboard, Templates, …). A demo account link — the ones the
+  // dashboard's "Demo profiles" section and the examples gallery open — is an
+  // evaluation view of the same card, so it must hide that navigation too. That is
+  // the decision that was made for the shareable link; a demo link is the same kind
+  // of visitor page.
+  const demo = await loadPage('profile/index.html',
+    { search: '?u=rahul123&demo=1', profileDir: '../examples/', settleMs: 900 });
+  assert.deepEqual(demo.errors, [], demo.errors.join('\n'));
+  // No owner nav at all: no Dashboard, no Templates.
+  assert.equal(demo.doc.querySelector('header.topbar nav'), null,
+    'a demo profile link must not expose the owner navigation');
+  assert.equal(demo.doc.querySelector('header.topbar'), null,
+    'a demo profile link must not show the site topbar');
+
+  // The card itself still renders, including the demo tier switcher — only the
+  // owner chrome is gone.
+  assert.ok(demo.doc.querySelector('.scenario-switch'), 'the demo switcher still works');
+  assert.ok(demo.doc.querySelector('.link-card'), 'the links still render');
+
+  // A genuine owner preview (/profile/?u=real, no demo flag) keeps the navigation.
+  const real = await loadPage('profile/index.html',
+    { search: '?u=yourname', settleMs: 900 });
+  assert.deepEqual(real.errors, [], real.errors.join('\n'));
+  const nav = real.doc.querySelector('header.topbar nav');
+  assert.ok(nav, 'a real owner preview keeps the navigation');
+  const labels = Array.from(nav.querySelectorAll('a')).map(a => a.textContent.trim());
+  assert.ok(labels.includes('Dashboard'), 'the owner nav includes Dashboard');
+  assert.ok(labels.includes('Templates'), 'the owner nav includes Templates');
+});
+
 // ---------------------------------------------------------------------------
 // The site root: a fork's own card index
 //

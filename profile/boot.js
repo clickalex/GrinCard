@@ -82,11 +82,37 @@
   /**
    * Printed/shared profile URLs are visitor-only pages. Keep the site navigation
    * out of them so sharing a profile never exposes Dashboard, Templates, or other
-   * owner tools. The /profile/ preview can still keep the navigation for owners.
+   * owner tools. The same goes for a demo/evaluation view (?demo=1, or a page
+   * pointed at examples/) — it is a visitor-facing walkthrough of the same card,
+   * so it gets the same treatment. A genuine owner preview (/profile/?u=real, no
+   * demo flag) is neither, and keeps the navigation so the owner can jump to the
+   * dashboard.
    */
   function isSharedProfile() {
     return /\/c\/[^/?#]+\/?$/.test(location.pathname) ||
       (document.body && document.body.getAttribute('data-profile-dir') === 'c');
+  }
+
+  /**
+   * True when this profile page is reached as a demo/evaluation view: a ?demo=1
+   * query flag (the links the examples gallery and the dashboard "Demo profiles"
+   * section open) or a host that put data-demo="1" on <body>.
+   *
+   * Deliberately narrower than isDemoContext(): it must not key off a
+   * data-profile-dir of "examples". Pointing a real shared profile at the
+   * fixtures (which the build-links stub test does) is not the same as opening a
+   * demo link, and would otherwise strip the navigation off a shared profile.
+   */
+  function isDemoView() {
+    var p = params();
+    if (p.demo === '1' || p.demo === 'true') return true;
+    var body = document.body;
+    return !!(body && body.getAttribute('data-demo') === '1');
+  }
+
+  /** True when the page should NOT surface the owner/site navigation. */
+  function isOwnerChromeHidden() {
+    return isSharedProfile() || isDemoView();
   }
 
   function ensureShell() {
@@ -144,9 +170,10 @@
     main.id = 'main';
     main.appendChild(shell);
 
-    // A shared /c/<username>/ URL is intentionally a focused visitor page.
-    // Do not add the owner/site navigation there.
-    if (!isSharedProfile()) {
+    // A shared /c/<username>/ URL, and any demo/evaluation view, is a focused
+    // visitor page. Do not add the owner/site navigation there — the same
+    // decision already made for the shareable link.
+    if (!isOwnerChromeHidden()) {
       document.body.insertBefore(skip, document.body.firstChild);
       document.body.appendChild(header);
     }

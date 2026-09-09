@@ -95,22 +95,219 @@
   // Loading and saving
   // ---------------------------------------------------------------------------
 
+  var KEY_GITHUB = Store.KEY_PREFIX + 'githubRepo';
+  var DEFAULT_GITHUB_REPO = 'GrinCard';
+
   /**
    * The permanent URL for a profile: derived, never typed.
    *
-   * Store.profileUrlFor() builds <site root>/c/<username>/ from the URL this script
-   * was served from, so the same code produces the right link on a fork, on a
-   * custom domain, and in a subdirectory — and an explicit absolute profile_url in
-   * the JSON still wins, which is how someone points a card at their own domain.
+   * Prefer a public GitHub Pages URL (from this Pages host, or from the GitHub
+   * user/repo the owner typed after copying the repository) so a QR printed from
+   * localhost still encodes an address other people can open. Fall back to
+   * Store.profileUrlFor() when we only have this deployment.
    */
   function defaultProfileUrl(username, profile) {
-    return Store.profileUrlFor(username || (state.profile && state.profile.username), profile);
+    username = username || (state.profile && state.profile.username);
+    return publicShareUrl(username, profile) || Store.profileUrlFor(username, profile);
   }
 
   /** The editor URL is intentionally different from the visitor URL. */
   function adminUrlFor(username) {
     if (!username) return Store.siteRoot() + 'dashboard/';
     return Store.siteRoot() + 'dashboard/?u=' + encodeURIComponent(username);
+  }
+
+  function storedGithub() {
+    try {
+      if (typeof localStorage === 'undefined') return { owner: '', repo: '' };
+      var raw = localStorage.getItem(KEY_GITHUB);
+      if (!raw) return { owner: '', repo: '' };
+      var parts = String(raw).split('/');
+      return { owner: parts[0] || '', repo: parts.slice(1).join('/') || '' };
+    } catch (e) {
+      return { owner: '', repo: '' };
+    }
+  }
+
+  function persistGithub(owner, repo) {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      if (!owner) localStorage.removeItem(KEY_GITHUB);
+      else localStorage.setItem(KEY_GITHUB, owner + (repo ? '/' + repo : ''));
+    } catch (e) { /* private mode */ }
+  }
+
+  function readGithubFields() {
+    var ownerEl = $('f-github-owner');
+    var repoEl = $('f-github-repo');
+    return {
+      owner: ownerEl ? ownerEl.value.trim() : '',
+      repo: repoEl ? repoEl.value.trim() : ''
+    };
+  }
+
+  /**
+   * The public origin a shareable /c/<username>/ link should use.
+   *
+   * The demo account is itself shareable: whoever opens this dashboard already
+   * has a /c/<username>/ URL derived from where the site is served. Typed GitHub
+   * owner/repo still wins (preview the URL a copied repo will get). A github.io
+   * host — including the upstream demo — is used automatically so the field is
+   * never empty for a loaded profile.
+   */
+  function shareRoot() {
+    // A fork already running on github.io is the public origin — use it even
+    // when the repo field is empty (a user site at alice.github.io/). Filling
+    // the form from identity and then applying the GrinCard default would
+    // rewrite that to /GrinCard/, which is not where the site is.
+    if (githubFieldsLocked()) {
+      var id = Store.githubPagesIdentity();
+      return Store.githubPagesRoot(id.owner, id.repo);
+    }
+    var typed = readGithubFields();
+    if (typed.owner) {
+      return Store.githubPagesRoot(typed.owner, typed.repo || DEFAULT_GITHUB_REPO);
+    }
+    var id = Store.githubPagesIdentity();
+    if (id && id.owner) {
+      return Store.githubPagesRoot(id.owner, id.repo);
+    }
+    return Store.siteRoot() || '';
+  }
+
+  function publicShareUrl(username, profile) {
+    if (profile && typeof profile.profile_url === 'string' &&
+        /^[a-z][a-z0-9+.-]*:/i.test(profile.profile_url)) {
+      return profile.profile_url;
+    }
+    if (!username) return '';
+    var root = shareRoot();
+    if (!root) return '';
+    return root + 'c/' + encodeURIComponent(username) + '/';
+  }
+
+  function isLocalHostUrl(url) {
+    try {
+      var host = new URL(url).hostname;
+      return host === 'localhost' || host === '127.0.0.1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function githubFieldsLocked() {
+    var id = Store.githubPagesIdentity();
+    return !!(id && id.owner && !Store.isUpstreamDemo());
+  }
+
+  /** True only when the visitor typed a GitHub owner that is not this host. */
+  function typedGithubOwner() {
+    var typed = readGithubFields();
+    if (!typed.owner) return false;
+    var id = Store.githubPagesIdentity();
+    if (id && id.owner && typed.owner.toLowerCase() === id.owner.toLowerCase()) {
+      var typedRepo = (typed.repo || DEFAULT_GITHUB_REPO).toLowerCase();
+      var idRepo = (id.repo || DEFAULT_GITHUB_REPO).toLowerCase();
+      if (typedRepo === idRepo) return false;
+    }
+    return true;
+  }
+
+  function hydrateGithubFields() {
+    var ownerEl = $('f-github-owner');
+    var repoEl = $('f-github-repo');
+    if (!ownerEl || !repoEl) return;
+    var box = $('github-repo-fields');
+    var locked = githubFieldsLocked();
+    if (locked) {
+      var id = Store.githubPagesIdentity();
+      ownerEl.value = id.owner;
+      repoEl.value = id.repo || '';
+      ownerEl.readOnly = true;
+      repoEl.readOnly = true;
+    } else {
+      ownerEl.readOnly = false;
+      repoEl.readOnly = false;
+      if (!ownerEl.value && !repoEl.value) {
+        var stored = storedGithub();
+        if (stored.owner) {
+          ownerEl.value = stored.owner;
+          repoEl.value = stored.repo;
+        } else {
+          var id = Store.githubPagesIdentity();
+          if (id && id.owner) {
+            ownerEl.value = id.owner;
+            repoEl.value = id.repo || DEFAULT_GITHUB_REPO;
+          }
+        }
+      }
+    }
+    if (box) box.hidden = !!locked;
+  }
+
+  function updateShareFields() {
+    var profile = state.profile || {};
+    var username = (($('f-username') && $('f-username').value.trim()) || profile.username || '');
+    var share = publicShareUrl(username, profile);
+    var preview = Store.profileUrlFor(username, profile);
+    var visitor = share || preview;
+    var adminUrl = adminUrlFor(username);
+
+    function setVal(id, value) {
+      var node = $(id);
+      if (node) node.value = value || '';
+    }
+    function setHref(id, value) {
+      var node = $(id);
+      if (!node) return;
+      node.href = value || '#';
+    }
+
+    setVal('f-profile-url', visitor);
+    setHref('btn-open-url', visitor || '#');
+    setVal('f-open-profile-url', visitor);
+    setHref('btn-open-profile', visitor || '#');
+    setVal('f-admin-url', adminUrl);
+    setHref('btn-open-admin', adminUrl);
+    setVal('f-share-url', share);
+
+    var shareInput = $('f-share-url');
+    if (shareInput) {
+      shareInput.placeholder = 'https://YOU.github.io/' + DEFAULT_GITHUB_REPO + '/c/' +
+        (username || 'your-username') + '/';
+    }
+
+    var copyBtn = $('btn-copy-share');
+    if (copyBtn) copyBtn.disabled = !share;
+    setHref('btn-open-share', share || '#');
+    var openShare = $('btn-open-share');
+    if (openShare) {
+      if (share) openShare.removeAttribute('aria-disabled');
+      else openShare.setAttribute('aria-disabled', 'true');
+    }
+
+    var note = $('share-upstream-note');
+    if (note) note.hidden = !Store.isUpstreamDemo();
+
+    var help = $('share-hero-help');
+    if (help) {
+      if (!username) {
+        help.textContent = 'Set a username — it is the last part of your shareable link.';
+      } else if (Store.isUpstreamDemo() && !typedGithubOwner()) {
+        help.innerHTML = 'This is the live demo account. Copy this repository, edit ' +
+          '<code>profile-data/' + escapeHtml(username) + '.json</code> (rename the file to you), ' +
+          'and turn on GitHub Pages — the same <code>/c/' + escapeHtml(username) + '/</code> ' +
+          'link then works on your copy.';
+      } else if (isLocalHostUrl(share)) {
+        help.innerHTML = 'This preview only works on this computer. Enter your GitHub user and ' +
+          'repo above for a public <code>github.io</code> link, or copy the repo and commit ' +
+          '<code>profile-data/' + escapeHtml(username) + '.json</code> — Pages derives the rest.';
+      } else {
+        help.innerHTML = 'Send this to anyone. Copy the repo and update ' +
+          '<code>profile-data/' + escapeHtml(username) + '.json</code> — that JSON is the whole ' +
+          'profile. GitHub Pages serves this same <code>/c/' + escapeHtml(username) + '/</code> URL.';
+      }
+    }
   }
 
   function blankProfile() {
@@ -130,16 +327,28 @@
   }
 
   function load(username) {
-    var target = username || new URLSearchParams(location.search).get('u') ||
-      Store.getLastUsername() || 'rahul123';
+    var requested = username || new URLSearchParams(location.search).get('u');
+    if (requested) return loadNamed(requested);
 
+    var last = Store.getLastUsername();
+    return Store.listProfiles().then(function (list) {
+      var names = {};
+      (list || []).forEach(function (p) { names[p.username] = true; });
+      if (last && (names[last] || Store.hasLocalProfile(last))) return loadNamed(last);
+      var own = (list || []).filter(function (p) { return !p._starter; })[0];
+      var pick = own || (list && list[0]);
+      return loadNamed(pick ? pick.username : 'yourname');
+    }).catch(function () { return loadNamed('yourname'); });
+  }
+
+  function loadNamed(target) {
     return Promise.all([Store.loadProfile(target), Store.loadRegistry(target)])
       .then(function (results) {
         var profile = results[0];
         state.registry = results[1] || { tokens: [], followers: [] };
         if (!profile) {
           profile = blankProfile();
-          profile.username = target === 'rahul123' ? '' : target;
+          profile.username = target && target !== 'rahul123' ? target : '';
           alert('warn', 'No saved profile for <strong>' + escapeHtml(target) +
             '</strong> — starting a fresh one. Nothing is lost; your other profiles are still there.');
         }
@@ -237,14 +446,8 @@
     $('f-name').value = p.display_name || '';
     $('f-role').value = p.designation || '';
     $('f-tagline').value = p.tagline || '';
-    var derived = defaultProfileUrl(p.username, p);
-    var adminUrl = adminUrlFor(p.username);
-    $('f-profile-url').value = derived;
-    $('btn-open-url').href = derived;
-    $('f-open-profile-url').value = derived;
-    $('btn-open-profile').href = derived;
-    $('f-admin-url').value = adminUrl;
-    $('btn-open-admin').href = adminUrl;
+    hydrateGithubFields();
+    updateShareFields();
     // Show an override only if one was actually set, so the field stays empty by default.
     $('f-profile-url-override').value =
       (p.profile_url && /^[a-z][a-z0-9+.-]*:\/\//i.test(p.profile_url)) ? p.profile_url : '';
@@ -898,11 +1101,20 @@
   }
 
   function wire() {
-    ['f-username', 'f-name', 'f-role', 'f-tagline', 'f-profile-url'].forEach(function (id) {
+    ['f-username', 'f-name', 'f-role', 'f-tagline', 'f-profile-url', 'f-profile-url-override'].forEach(function (id) {
       $(id).addEventListener('input', function () {
         // Read the form first: markDirty() compares state against what is saved,
         // so comparing before reading would always report "no changes".
-        readForm(); markDirty(); renderPreview();
+        readForm(); markDirty(); updateShareFields(); renderPreview();
+      });
+    });
+    ['f-github-owner', 'f-github-repo'].forEach(function (id) {
+      if (!$(id)) return;
+      $(id).addEventListener('input', function () {
+        var gh = readGithubFields();
+        persistGithub(gh.owner, gh.repo);
+        updateShareFields();
+        renderPreview();
       });
     });
     $('f-show-photo').addEventListener('change', function () {
@@ -941,7 +1153,14 @@
 
     $('btn-add-link').addEventListener('click', addLink);
     $('btn-save').addEventListener('click', function () { save(); });
-    $('btn-load-demo').addEventListener('click', function () { load('rahul123'); });
+    $('btn-load-demo').addEventListener('click', function () {
+      var params = new URLSearchParams(location.search);
+      if (Store.isDemoRequest() && params.get('u') === 'rahul123') {
+        load('rahul123');
+        return;
+      }
+      location.search = '?u=rahul123&demo=1';
+    });
     $('btn-reset').addEventListener('click', function () {
       if (!window.confirm('Delete everything this browser saved (profiles, tokens, approvals) and reload the demo?')) return;
       var n = Store.clearLocal();
@@ -968,6 +1187,14 @@
     });
     $('btn-copy-admin').addEventListener('click', function (ev) {
       copyLinkFrom('f-admin-url', ev.currentTarget);
+    });
+    $('btn-copy-share').addEventListener('click', function (ev) {
+      var url = $('f-share-url').value;
+      if (!url) {
+        alert('warn', 'Set a username first — it is the last part of the shareable link.');
+        return;
+      }
+      copyLinkFrom('f-share-url', ev.currentTarget);
     });
 
     Array.prototype.forEach.call($('ecl-picker').children, function (btn) {

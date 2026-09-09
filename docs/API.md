@@ -529,6 +529,9 @@ Store.basePath()                    // '/repo/'
 Store.rootRelative('docs/API.md')   // '../docs/API.md' from a page one level down
 Store.profileUrlFor('rahul')        // 'https://you.github.io/repo/c/rahul/'
 Store.setSiteRoot(url)              // test hook; pass null to clear
+Store.githubPagesIdentity()         // { owner, repo } on github.io, else null
+Store.githubPagesRoot('you', 'repo')// 'https://you.github.io/repo/'
+Store.isUpstreamDemo()              // true only on clickalex.github.io/GrinCard
 ```
 
 `siteRoot()` is derived, not configured. It reads the URL of its own `<script>` tag — this file

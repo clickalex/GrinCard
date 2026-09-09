@@ -52,6 +52,57 @@
 
   <div id="alerts"></div>
 
+  <section class="panel share-hero" id="share-hero" aria-labelledby="h-share-hero">
+    <div class="panel-head">
+      <h2 id="h-share-hero">Your shareable link</h2>
+      <span class="hint">The demo account is already shareable. Copy the repo, update the JSON, turn on Pages.</span>
+    </div>
+
+    <div class="notice notice-info" id="share-upstream-note" hidden>
+      <div>
+        <strong>This is the live demo account.</strong>
+        The link below is real — anyone can open it. To make it yours, only the JSON changes:
+        <ol class="share-steps">
+          <li>Copy the repo — <a href="https://github.com/clickalex/GrinCard/fork">Fork</a> or
+            <a href="https://github.com/clickalex/GrinCard/generate">Use this template</a>.</li>
+          <li>Edit <code>profile-data/yourname.json</code> (rename the file to you) and list that
+            username in <code>profile-data/index.json</code>.</li>
+          <li>Settings → Pages → Deploy from a branch. Your link is
+            <code>https://YOU.github.io/REPO/c/YOU/</code> — same shape, your data.</li>
+        </ol>
+        Optional: put your GitHub user/repo below to preview that URL before you deploy.
+      </div>
+    </div>
+
+    <div class="field" id="github-repo-fields">
+      <label for="f-github-owner">Your GitHub repository <span class="muted">(optional)</span></label>
+      <div class="github-repo-row" role="group" aria-label="GitHub owner and repository">
+        <span class="prefix mono">github.com/</span>
+        <input type="text" id="f-github-owner" autocomplete="off" spellcheck="false"
+               placeholder="your-github" aria-label="GitHub username">
+        <span class="slash mono" aria-hidden="true">/</span>
+        <input type="text" id="f-github-repo" autocomplete="off" spellcheck="false"
+               placeholder="GrinCard" aria-label="Repository name">
+      </div>
+      <p class="help">
+        Needed only to preview a public <code>github.io</code> URL from localhost. On your own
+        Pages site the link is derived for you — you just update the JSON.
+      </p>
+    </div>
+
+    <div class="url-row share-hero-url">
+      <input type="url" id="f-share-url" readonly spellcheck="false"
+             placeholder="https://YOU.github.io/GrinCard/c/your-username/"
+             aria-label="Shareable profile link">
+      <button type="button" class="btn btn-sm" id="btn-copy-share">Copy link</button>
+      <a class="btn btn-ghost btn-sm" id="btn-open-share" href="#" target="_blank" rel="noopener">Open</a>
+    </div>
+    <p class="help" id="share-hero-help">
+      The shareable link is always <code>/c/USERNAME/</code> on this site. Copy the repository and
+      edit <code>profile-data/&lt;username&gt;.json</code> — that file is the whole profile.
+    </p>
+  </section>
+
   <section class="panel demo-profile-links" aria-labelledby="h-demo-profiles">
     <div class="panel-head">
       <h2 id="h-demo-profiles">Demo profiles</h2>
@@ -270,7 +321,7 @@
             </div>
           </div>
         </div>
-        <p class="help">The links use different routes: <code>/c/username/</code> for visitors and <code>/dashboard/?u=username</code> for editing. In this static V1, the admin route is not password-protected; real authentication is planned for V2.</p>
+        <p class="help">The links use different routes: <code>/c/username/</code> for visitors and <code>/dashboard/?u=username</code> for editing. The visitor URL is the same shareable GitHub Pages link shown at the top. In this static V1, the admin route is not password-protected; real authentication is planned for V2.</p>
 
         <h3 class="sub-head">Quick share — temporary link</h3>
         <div class="grid grid-2-tight">

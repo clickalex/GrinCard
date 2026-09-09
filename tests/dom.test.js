@@ -764,6 +764,89 @@ test('dashboard: the permanent URL is shown derived, and only an override is edi
   assert.equal(third.doc.getElementById('f-profile-url-override').value, '');
 });
 
+test('dashboard: without ?u= it loads the starter profile with a shareable link', { skip: NO_JSDOM }, async () => {
+  // A fork owner opens /dashboard/ with no query. The starter in profile-data/
+  // is the demo account, and its /c/yourname/ URL is already shareable — people
+  // copy the repo and update that JSON, they do not start from a blank field.
+  const { doc, errors } = await loadPage('dashboard/index.html', { settleMs: 900 });
+  assert.deepEqual(errors, [], errors.join('\n'));
+  assert.equal(doc.getElementById('f-username').value, 'yourname');
+  assert.equal(doc.getElementById('share-hero').hidden, false);
+  assert.equal(doc.getElementById('github-repo-fields').hidden, false,
+    'localhost is not GitHub Pages, so the GitHub fields stay as an optional override');
+  assert.equal(doc.getElementById('f-share-url').value, ORIGIN + '/c/yourname/',
+    'the demo account shows a shareable /c/username/ link immediately');
+  assert.equal(doc.getElementById('btn-copy-share').disabled, false);
+  assert.equal(doc.getElementById('btn-open-share').getAttribute('href'), ORIGIN + '/c/yourname/');
+});
+
+test('dashboard: copying the repo into GitHub fields produces a public shareable link', { skip: NO_JSDOM }, async () => {
+  const { doc, errors } = await loadPage('dashboard/index.html', { search: '?u=yourname', settleMs: 700 });
+  assert.deepEqual(errors, [], errors.join('\n'));
+
+  setValue(doc, 'f-github-owner', 'alice');
+  setValue(doc, 'f-github-repo', 'my-card');
+  await new Promise(r => setTimeout(r, 50));
+
+  const share = doc.getElementById('f-share-url').value;
+  assert.equal(share, 'https://alice.github.io/my-card/c/yourname/',
+    'the public link is derived from the copied repo, not typed as a URL');
+  assert.equal(doc.getElementById('f-open-profile-url').value, share);
+  assert.equal(doc.getElementById('btn-copy-share').disabled, false);
+  assert.equal(doc.getElementById('btn-open-share').getAttribute('href'), share);
+
+  // Changing the username — the thing you change in the repo copy — updates the link live.
+  setValue(doc, 'f-username', 'alice');
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(doc.getElementById('f-share-url').value, 'https://alice.github.io/my-card/c/alice/');
+  assert.match(doc.getElementById('share-hero-help').textContent, /profile-data\/alice\.json/);
+});
+
+test('dashboard: a fork on GitHub Pages fills the shareable link without typing the repo', { skip: NO_JSDOM }, async () => {
+  const { doc, errors } = await loadPage('dashboard/index.html', {
+    search: '?u=yourname',
+    settleMs: 700,
+    bodyAttrs: { 'data-site-root': 'https://alice.github.io/my-card' }
+  });
+  assert.deepEqual(errors, [], errors.join('\n'));
+  assert.equal(doc.getElementById('github-repo-fields').hidden, true,
+    'the Pages host already is the copied repo');
+  const id = doc.defaultView.Store.githubPagesIdentity();
+  assert.equal(id && id.owner, 'alice');
+  assert.equal(id && id.repo, 'my-card');
+  assert.equal(doc.getElementById('f-share-url').value, 'https://alice.github.io/my-card/c/yourname/');
+  assert.equal(doc.getElementById('share-upstream-note').hidden, true);
+  assert.equal(doc.getElementById('btn-copy-share').disabled, false);
+});
+
+test('dashboard: the upstream demo account is shareable, and JSON is what you change', { skip: NO_JSDOM }, async () => {
+  const { doc, errors } = await loadPage('dashboard/index.html', {
+    search: '?u=yourname',
+    settleMs: 700,
+    bodyAttrs: { 'data-site-root': 'https://clickalex.github.io/GrinCard' }
+  });
+  assert.deepEqual(errors, [], errors.join('\n'));
+  assert.equal(doc.getElementById('share-upstream-note').hidden, false);
+  assert.equal(doc.getElementById('github-repo-fields').hidden, false);
+  assert.equal(doc.getElementById('f-share-url').value,
+    'https://clickalex.github.io/GrinCard/c/yourname/',
+    'the live demo account already has a public /c/username/ link');
+  assert.equal(doc.getElementById('btn-copy-share').disabled, false);
+  assert.match(doc.getElementById('share-hero-help').textContent, /profile-data\/yourname\.json/);
+  setValue(doc, 'f-github-owner', 'priya');
+  setValue(doc, 'f-github-repo', 'my-card');
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(doc.getElementById('f-share-url').value, 'https://priya.github.io/my-card/c/yourname/');
+});
+
+test('dashboard: an empty repo name defaults to GrinCard after you enter the GitHub user', { skip: NO_JSDOM }, async () => {
+  const { doc, errors } = await loadPage('dashboard/index.html', { search: '?u=yourname', settleMs: 700 });
+  assert.deepEqual(errors, [], errors.join('\n'));
+  setValue(doc, 'f-github-owner', 'riley');
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(doc.getElementById('f-share-url').value, 'https://riley.github.io/GrinCard/c/yourname/');
+});
+
 test('dashboard: the token duration picker is generated from LIMITS', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('dashboard/index.html', { search: '?u=rahul123', settleMs: 700, profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));

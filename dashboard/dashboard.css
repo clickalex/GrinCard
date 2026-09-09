@@ -48,6 +48,24 @@
 .demo-profile-link span { color: var(--page-muted); font-size: 12px; margin-bottom: 5px; }
 .demo-profile-link a { font-size: 12px; color: var(--page-text); text-decoration: underline; text-underline-offset: 2px; }
 
+/* Copy the repo → change username → this panel is the public URL. */
+.share-hero { border-color: rgba(242, 177, 52, .45); }
+.share-hero .share-steps { margin: 8px 0 0; padding-left: 18px; }
+.share-hero .share-steps li { margin: 4px 0; }
+.share-hero-url { margin-top: 4px; }
+.share-hero-url input { flex: 1 1 240px; min-width: 0; font-family: var(--mono); font-size: 13px; }
+.github-repo-row { display: flex; align-items: stretch; min-width: 0; }
+.github-repo-row .prefix,
+.github-repo-row .slash {
+  display: grid; place-items: center; padding: 0 10px; font-size: 13px;
+  background: #f3f2ee; border: 1px solid var(--page-border); color: var(--page-muted);
+}
+.github-repo-row .prefix { border-right: 0; border-radius: 10px 0 0 10px; }
+.github-repo-row .slash { border-left: 0; border-right: 0; padding: 0 6px; }
+.github-repo-row input { border-radius: 0; font-family: var(--mono); font-size: 14px; }
+.github-repo-row input:last-of-type { border-radius: 0 10px 10px 0; }
+.github-repo-row input[readonly] { background: #f3f2ee; color: var(--page-muted); }
+
 /* The visitor URL and editor URL are deliberately presented as two separate
    controls, so owners do not accidentally send the dashboard to visitors. */
 .share-links { display: grid; gap: 12px; margin: 4px 0 10px; }

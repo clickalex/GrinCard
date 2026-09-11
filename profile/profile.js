@@ -75,46 +75,14 @@
     vars['--profile-page-veil'] = hasPageImage
       ? 'linear-gradient(rgba(246,246,244,.78), rgba(246,246,244,.78))'
       : 'linear-gradient(transparent, transparent)';
-    // Anything painted in the accent — the Copy link button, for one — needs type in the
-    // opposite lightness. Signal and Paper accent on near-black, so hardcoding dark ink
-    // there would be invisible ink on an invisible button.
+    // Anything painted in the accent — the accent button utility on the owner
+    // pages, for one — needs type in the opposite lightness. Signal and Paper accent
+    // on near-black, so hardcoding dark ink there would be invisible ink on an
+    // invisible button.
     vars['--accent-fg'] = TPL.isLight(vars['--accent']) ? '#1a1a12' : '#ffffff';
     Object.keys(vars).forEach(function (name) {
       document.documentElement.style.setProperty(name, vars[name]);
     });
-  }
-
-  /**
-   * Clipboard with a fallback, so the copy button works on a plain-http deploy and
-   * from file:// too — the same helper assets/cards-index.js uses.
-   */
-  function copyText(text, button) {
-    function done(ok) {
-      if (!button) return;
-      var label = button.textContent;
-      button.textContent = ok ? 'Copied' : 'Press ⌘C';
-      button.disabled = true;
-      setTimeout(function () { button.textContent = label; button.disabled = false; }, 1400);
-    }
-    function legacy() {
-      try {
-        var area = document.createElement('textarea');
-        area.value = text;
-        area.setAttribute('readonly', '');
-        area.style.position = 'fixed';
-        area.style.opacity = '0';
-        document.body.appendChild(area);
-        area.select();
-        var ok = document.execCommand('copy');
-        document.body.removeChild(area);
-        return ok;
-      } catch (e) { return false; }
-    }
-    if (window.navigator && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacy()); });
-    } else {
-      done(legacy());
-    }
   }
 
   function photoNode(profile) {
@@ -163,28 +131,6 @@
     }
     if (unlockedByToken) card.setAttribute('data-just-unlocked', 'true');
     return el('li', {}, [card]);
-  }
-
-  /**
-   * The one link this page offers: the card's permanent URL, shown as text so it can
-   * be selected, with a button that copies it. A visitor can forward it; the owner can
-   * paste it into a bio. Nothing here is demo-only, because a shared card is the real
-   * product — there is no second view of it to compare against.
-   */
-  function shareBlock(canonical) {
-    var button = el('button', { class: 'btn btn-sm', type: 'button', text: 'Copy link' });
-    button.addEventListener('click', function () { copyText(canonical, button); });
-
-    return el('section', { class: 'share-block no-print', 'aria-labelledby': 'share-title' }, [
-      el('h2', { id: 'share-title', text: 'Share this card' }),
-      el('div', { class: 'url-row' }, [
-        el('code', { class: 'url-value share-url', text: canonical }),
-        button,
-        el('a', { class: 'btn btn-sm btn-ghost', href: canonical, text: 'Open' })
-      ]),
-      el('p', { class: 'tiny muted', text:
-        'This link is permanent. Editing the profile changes what it shows, never the address.' })
-    ]);
   }
 
   function notFound(username) {
@@ -251,8 +197,9 @@
     }
 
     // The canonical URL is derived, never typed: a fork's cards point at the fork.
+    // The page no longer shows a share section — the URL only feeds the
+    // <link rel="canonical"> tag below.
     var canonical = Store.profileUrlFor(profile.username, profile);
-    root.appendChild(shareBlock(canonical));
 
     var existingCanonical = document.querySelector('link[rel="canonical"]');
     if (existingCanonical) existingCanonical.setAttribute('href', canonical);
@@ -264,9 +211,7 @@
     }
 
     root.appendChild(el('footer', { class: 'profile-foot no-print' }, [
-      el('p', {
-        html: 'Powered by <a href="' + link('index.html') + '">QR Link Card</a> — free and open source (MIT).'
-      }),
+      el('p', { text: 'Mohammad Umair' }),
       el('p', { class: 'tiny', html:
         'This URL never changes. Edit the links and every printed card updates itself.' })
     ]));

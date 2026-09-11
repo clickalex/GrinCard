@@ -496,29 +496,23 @@ test('profile page: an unknown username renders a helpful 404', { skip: NO_JSDOM
   assert.match(doc.body.textContent, /profile-data\//, 'should explain where profiles live');
 });
 
-test('profile page: the one link it offers is the card\'s permanent URL', { skip: NO_JSDOM }, async () => {
-  const { doc, win, errors } = await loadPage('profile/index.html',
+test('profile page: no share section; the footer credits the author', { skip: NO_JSDOM }, async () => {
+  const { doc, errors } = await loadPage('profile/index.html',
     { search: '?u=rahul123', profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
 
-  const blocks = doc.querySelectorAll('.share-block');
-  assert.equal(blocks.length, 1, 'exactly one share block — the card has one link');
-  const block = blocks[0];
-  assert.ok(block, 'the page should offer the card link');
-  assert.equal(block.textContent.match(/https?:\/\/[^\s]+/g).length, 1,
-    'and it names that URL once, so there is nothing to confuse');
-  assert.equal(block.querySelector('.share-url').textContent, ORIGIN + '/c/rahul123/',
-    'the URL is shown as text, so it can be selected without the button');
-  assert.match(block.textContent, /permanent/i, 'the page says the address does not move');
+  // The share section was removed: a visitor card shows the person and their
+  // links, not the card's own URL. The canonical <link> tag still carries it.
+  assert.equal(doc.querySelectorAll('.share-block').length, 0,
+    'no share section — the page no longer offers the card URL as a block');
+  assert.equal(doc.querySelector('.share-url'), null, 'no copyable URL row either');
 
-  const button = block.querySelector('button');
-  assert.equal(button.textContent, 'Copy link');
-  button.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
-  await new Promise(r => setTimeout(r, 60));
-  // jsdom has no clipboard, so this proves the click reached the handler and the
-  // button reported the result — not that the bytes landed on a real clipboard.
-  assert.notEqual(button.textContent, 'Copy link', 'the click must be wired to the copy handler');
-  assert.equal(button.disabled, true, 'and lock the button while it reports back');
+  // The footer credits the author instead of linking back to the site.
+  const foot = doc.querySelector('.profile-foot');
+  assert.ok(foot, 'the page still has a footer');
+  assert.match(foot.textContent, /Mohammad Umair/, 'the footer credits Mohammad Umair');
+  assert.equal(foot.querySelector('a[href*="index.html"]'), null,
+    'and the credit is not a link back to the site index');
 });
 
 test('profile page: external links are safe (rel=noopener, target=_blank)', { skip: NO_JSDOM }, async () => {
@@ -1160,8 +1154,8 @@ test('build-links generates a stub that runs the shared renderer', { skip: NO_JS
     assert.deepEqual(errors, [], errors.join('\n'));
     assert.deepEqual(textOf(doc, '.link-card .label'), ['Instagram', 'Portfolio', 'Email'],
       'a stranger at /c/rahul123/ must see the public links and nothing else');
-    assert.equal(doc.querySelector('.share-block .share-url').textContent, ORIGIN + '/c/rahul123/',
-      'the printed URL is the one thing this page offers to copy');
+    assert.equal(doc.querySelector('.share-block'), null,
+      'the printed page offers no share section');
     assert.equal(doc.title, 'Rahul Kumar — QR Link Card');
     // Links must climb two levels from here, or the stub would 404 its own assets.
     const home = doc.querySelector('header.topbar .brand');
@@ -1567,18 +1561,19 @@ test('every link to a fixture profile carries the demo flag', () => {
   assert.deepEqual(offenders, [], offenders.join('\n'));
 });
 
-test('a demo card and a real card offer the same single share link', { skip: NO_JSDOM }, async () => {
+test('a demo card and a real card render the same visitor view, no share section', { skip: NO_JSDOM }, async () => {
   // There used to be a four-visitor switcher here, shown only on the fixtures. It is
   // gone on both: on a real card it was noise that advertised private links, and on a
-  // demo it taught a comparison the page no longer makes. What both show is the link.
+  // demo it taught a comparison the page no longer makes. The share section is gone
+  // too, on demo and real cards alike.
   const demo = await loadPage('profile/index.html',
     { search: '?u=rahul123', profileDir: '../examples/', settleMs: 900 });
-  assert.ok(demo.doc.querySelector('.share-block'), 'the demo offers the card link');
+  assert.equal(demo.doc.querySelector('.share-block'), null, 'the demo has no share section');
   assert.equal(demo.doc.querySelector('.scenario-switch'), null,
     'and nothing else: the visitor-comparison switcher is gone');
 
   const real = await loadPage('profile/index.html', { search: '?u=yourname', settleMs: 900 });
-  assert.ok(real.doc.querySelector('.share-block'), 'so does someone else\'s real card');
+  assert.equal(real.doc.querySelector('.share-block'), null, 'nor does someone else\'s real card');
   assert.equal(real.doc.querySelector('.scenario-switch'), null);
   assert.ok(real.doc.querySelector('.link-card'), 'and the links still render');
 });
@@ -1599,8 +1594,8 @@ test('demo profile links hide the owner navigation, like the shareable link', { 
   assert.equal(demo.doc.querySelector('header.topbar'), null,
     'a demo profile link must not show the site topbar');
 
-  // The card itself still renders, share link included — only the owner chrome is gone.
-  assert.ok(demo.doc.querySelector('.share-block'), 'the demo keeps its share link');
+  // The card itself still renders, share section excluded — only the owner chrome is gone.
+  assert.equal(demo.doc.querySelector('.share-block'), null, 'the demo shows no share section');
   assert.ok(demo.doc.querySelector('.link-card'), 'the links still render');
 
   // A genuine owner preview (/profile/?u=real, no demo flag) keeps the navigation.
@@ -1801,8 +1796,6 @@ test('a pale or pitch-black accent still gets a legible button', { skip: NO_JSDO
   // And the stylesheet must actually consume it, with the old hard-coded ink as the
   // fallback so pages that never set the variable are unchanged.
   const css = fs.readFileSync(path.join(ROOT, 'assets/styles.css'), 'utf8');
-  assert.ok(/\.share-block \.btn \{[^}]*--btn-fg: var\(--accent-fg, #1a1a12\)/.test(css),
-    'the share block must read --accent-fg');
   assert.ok(/\.btn-accent \{[^}]*--btn-fg: var\(--accent-fg, #1a1a12\)/.test(css),
-    'so must the accent button utility');
+    'the accent button utility must read --accent-fg');
 });

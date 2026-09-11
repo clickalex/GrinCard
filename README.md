@@ -216,7 +216,7 @@ tools/
   build-templates.js           validate contributions, keep the manifest in sync
   check-links.js               every internal link resolves, in pages and in docs
   install-workflows.js         copy the workflows into .github/workflows/
-  github-workflows/            ci.yml (tests, links, generated files) + pages.yml (deploy)
+  github-workflows/            ci.yml (tests, links, generated files) + pages-deploy.yml (deploy)
 tests/                         node --test: encoder, card, rules, generator, DOM, tools
 docs/                          ARCHITECTURE, API, PRINTING, CUSTOMIZATION, TEMPLATES
 ```

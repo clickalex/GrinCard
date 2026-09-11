@@ -173,7 +173,7 @@ Small, self-contained, no server. Roughly in priority order:
    what is wrong.
 7. ~~**`/c/username` shipped as generated files.**~~ **Done** — `tools/build-links.js` writes
    `c/<username>/index.html` from `profile-data/*.json`, plus the manifests a static site needs
-   because it cannot list a directory. It runs in `.github/workflows/pages.yml` on every push, so
+   because it cannot list a directory. It runs in `.github/workflows/pages-deploy.yml` on every push, so
    nobody maintains one file per person by hand. See
    [the fork-to-deploy pivot](#v16--the-fork-to-deploy-pivot).
 

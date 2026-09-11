@@ -385,7 +385,7 @@ test('install-workflows copies the canonical workflows, and detects drift', () =
   // That indirection is only safe if something verifies the two agree.
   const iw = require('../tools/install-workflows.js');
   const files = iw.workflowFiles();
-  assert.deepEqual(files, ['ci.yml', 'pages.yml'], 'expected exactly the two workflows');
+  assert.deepEqual(files, ['ci.yml', 'pages-deploy.yml'], 'expected exactly the two workflows');
 
   files.forEach((f) => {
     const canonical = fs.readFileSync(path.join(iw.SRC, f), 'utf8');
@@ -429,10 +429,10 @@ test('install-workflows copies the canonical workflows, and detects drift', () =
     assert.equal(fs.readFileSync(path.join(dest, 'ci.yml'), 'utf8'),
       fs.readFileSync(path.join(iw.SRC, 'ci.yml'), 'utf8'), 'repaired byte for byte');
 
-    fs.rmSync(path.join(dest, 'pages.yml'));
+    fs.rmSync(path.join(dest, 'pages-deploy.yml'));
     assert.equal(iw.main(['--check', '--dest', dest]), 1, 'a missing workflow must fail --check');
     assert.equal(iw.main(['--dest', dest]), 0, 'and a plain run puts it back');
-    assert.ok(fs.existsSync(path.join(dest, 'pages.yml')));
+    assert.ok(fs.existsSync(path.join(dest, 'pages-deploy.yml')));
   } finally {
     fs.rmSync(dest, { recursive: true, force: true });
   }

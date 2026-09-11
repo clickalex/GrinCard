@@ -487,7 +487,12 @@ test('profile page: an unknown username renders a helpful 404', { skip: NO_JSDOM
   // It must offer a way forward that exists on THIS deployment. Linking to a
   // hardcoded fixture username would be a dead end on someone's fork.
   assert.match(doc.body.innerHTML, /examples\//, 'should link to the example profiles');
-  assert.match(doc.body.innerHTML, /dashboard\//, 'should offer to create one');
+  const empty = doc.querySelector('.empty-links');
+  assert.ok(empty, 'the empty state should render');
+  assert.match(empty.innerHTML, /card-builder\/\?demo=1/,
+    'should offer to create one — in the builder, still flagged as a demo');
+  assert.ok(!/dashboard\//.test(empty.innerHTML),
+    'a demo dead-end must not lead back to the owner console');
   assert.match(doc.body.textContent, /profile-data\//, 'should explain where profiles live');
 });
 
@@ -947,6 +952,34 @@ test('card builder: changing the username changes the URL encoded in the QR', { 
   assert.equal(expected.ecl, 'Q');
 });
 
+test('card builder in demo mode: an evaluation view, not a door to the dashboard', { skip: NO_JSDOM }, async () => {
+  // The examples gallery links here as "Design a card for this person" with
+  // ?demo=1. That makes the page part of the demo, and the dashboard — the
+  // owner's console — must not be reachable from it: not from the nav, not from
+  // the "edit later" hint, and not by saving, which for an owner opens it.
+  const { doc, win, errors } = await loadPage('card-builder/index.html',
+    { search: '?demo=1&u=rahul123', settleMs: 900 });
+  assert.deepEqual(errors, [], errors.join('\n'));
+  assert.equal(doc.getElementById('b-username').value, 'rahul123',
+    'the fixture loads, because ?demo=1 points the builder at examples/');
+
+  assert.equal(doc.querySelector('[data-owner-tool]'), null,
+    'every owner-only affordance is stripped');
+  assert.ok(!/dashboard\//.test(doc.body.innerHTML),
+    'the demo builder must not link the owner console anywhere');
+  assert.match(doc.getElementById('b-save').textContent, /save to this browser/i,
+    'the save button no longer promises the dashboard');
+  assert.match(doc.getElementById('b-next-copy').textContent, /stay in this browser/i,
+    'the next-step copy describes the demo, not the dashboard');
+
+  // Saving writes to this browser — the demo pages read it back — and keeps the
+  // visitor here. A navigation attempt surfaces in jsdom as "not implemented".
+  click(doc, 'b-save');
+  await new Promise(r => setTimeout(r, 200));
+  assert.deepEqual(errors, [], 'saving must not attempt navigation: ' + errors.join('\n'));
+  assert.equal(win.location.search, '?demo=1&u=rahul123', 'the page is still the builder');
+});
+
 // ---------------------------------------------------------------------------
 // Other pages
 // ---------------------------------------------------------------------------
@@ -1073,6 +1106,24 @@ test('print sheet page: lays out both sides with mm-sized frames', { skip: NO_JS
   await new Promise(r => setTimeout(r, 200));
   assert.equal(doc.querySelectorAll('.sheet-card.bleed').length, 2);
   assert.match(doc.getElementById('sheet-note').textContent, /95 × 57 mm/);
+});
+
+test('print sheet in demo mode: the card without the owner console', { skip: NO_JSDOM }, async () => {
+  // The examples gallery ("Print sheet") and the demo card builder open this
+  // page with ?demo=1. The sheet still lays out, but the dashboard is the
+  // owner's console: its nav link and the "download the PDF" shortcut — which
+  // lands there — are stripped, not hidden.
+  const { doc, errors } = await loadPage('print/index.html',
+    { search: '?demo=1&u=rahul123', settleMs: 800 });
+  assert.deepEqual(errors, [], errors.join('\n'));
+  assert.equal(doc.querySelectorAll('.sheet-card').length, 2,
+    'the demo card still lays out both sides, straight from examples/');
+  assert.equal(doc.getElementById('btn-pdf'), null,
+    'the PDF shortcut goes to the dashboard, so it is not offered');
+  assert.equal(doc.querySelector('[data-owner-tool]'), null,
+    'every owner-only affordance is stripped');
+  assert.ok(!/dashboard\//.test(doc.body.innerHTML),
+    'the demo sheet must not link the owner console anywhere');
 });
 
 // ---------------------------------------------------------------------------
@@ -1665,6 +1716,17 @@ test('examples gallery: one share link per demo profile, and no scenario list', 
   assert.equal(doc.querySelector('.example-scenarios'), null);
   assert.ok(!/stranger scans|four scenarios/i.test(doc.body.textContent), doc.body.textContent.slice(0, 200));
   assert.match(doc.body.textContent, /not enforcement|demonstrations/i);
+
+  // The gallery IS the demo, and the dashboard is the owner's console: it must
+  // not be linked from here. Builder and Print stay, but flagged, so the
+  // walkthrough never opens an owner page.
+  const nav = Array.from(doc.querySelectorAll('header.topbar nav a'));
+  assert.ok(nav.length >= 3, 'the gallery keeps its site navigation');
+  assert.ok(!nav.some(a => /dashboard\//.test(a.getAttribute('href') || '')),
+    'the demo gallery must not link the dashboard');
+  nav.filter(a => /\/(card-builder|print)\//.test(a.getAttribute('href') || ''))
+    .forEach(a => assert.match(a.getAttribute('href'), /[?&]demo=1/,
+      a.textContent + ' must carry the demo flag so its page stays a demo'));
 });
 
 // ---------------------------------------------------------------------------

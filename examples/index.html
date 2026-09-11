@@ -19,14 +19,20 @@
 
 <a class="sr-only" href="#main">Skip to content</a>
 
+<!--
+  This page is the demo (data-demo="1"), so its navigation must never hand a
+  visitor the dashboard — that is the owner's console. Builder and Print ARE
+  part of the walkthrough (each panel links to them), so they stay, but they
+  carry ?demo=1: flagged, those pages strip their own dashboard affordances,
+  and the visitor stays inside the evaluation.
+-->
 <header class="topbar">
   <a class="brand" href="../index.html">QR Link Card</a>
   <nav>
     <a href="../index.html">Cards</a>
-    <a href="../card-builder/">Builder</a>
-    <a href="../dashboard/">Dashboard</a>
+    <a href="../card-builder/?demo=1">Builder</a>
     <a href="../templates/">Templates</a>
-    <a href="../print/">Print</a>
+    <a href="../print/?demo=1">Print</a>
     <a href="./" aria-current="page">Examples</a>
   </nav>
 </header>

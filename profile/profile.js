@@ -195,12 +195,15 @@
       el('h1', { class: 'profile-name', text: 'No profile here' })
     ]));
     var demo = Boot && Boot.demo;
+    // The demo branch must not offer the dashboard: a demo link is an evaluation
+    // view, and the dashboard is the owner's console. "Create your own" goes to
+    // the builder — still flagged, so even that stays inside the demo.
     root.appendChild(el('div', { class: 'empty-links' }, [
       el('p', { text: 'There is no profile called “' + (username || '') + '”.' }),
       el('p', {
         html: demo
           ? 'Try <a href="' + link('examples/') + '">the example profiles</a>, or ' +
-            '<a href="' + link('dashboard/') + '">create your own</a>.'
+            '<a href="' + link('card-builder/?demo=1') + '">create your own</a>.'
           : '<a href="' + link('index.html') + '">See every card on this site</a>, or ' +
             '<a href="' + link('card-builder/') + '">make one</a>.'
       }),

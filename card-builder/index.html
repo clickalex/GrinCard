@@ -25,7 +25,10 @@
   <nav>
     <a href="../index.html">Overview</a>
     <a href="./" aria-current="page">Builder</a>
-    <a href="../dashboard/">Dashboard</a>
+    <!-- data-owner-tool: stripped when the page runs as a demo (?demo=1, the
+         links the examples gallery builds). A demo visitor is evaluating the
+         product, and the dashboard is the owner's console — not part of it. -->
+    <a href="../dashboard/" data-owner-tool>Dashboard</a>
     <a href="../profile/">Profile</a>
     <a href="../templates/">Templates</a>
     <a href="../qr-generator/">QR tool</a>
@@ -127,7 +130,8 @@
         <div class="btn-row mt2">
           <button type="button" class="btn btn-ghost" id="b-add-link">+ Add link</button>
         </div>
-        <p class="help">
+        <!-- Owner guidance: the dashboard does not exist for a demo visitor. -->
+        <p class="help" data-owner-tool>
           You can keep editing these later from the <a href="../dashboard/">dashboard</a> — the card you
           print today will pick up whatever you change.
         </p>
@@ -170,7 +174,9 @@
 
       <section class="panel" aria-labelledby="b-next">
         <div class="panel-head"><h2 id="b-next">Next</h2></div>
-        <p class="small muted">
+        <!-- builder.js rewrites this sentence in demo mode (?demo=1): the demo
+             saves to this browser and never opens the dashboard. -->
+        <p class="small muted" id="b-next-copy">
           Save this to your browser and open the dashboard to mint temporary links, approve followers and
           export your profile JSON for self-hosting.
         </p>

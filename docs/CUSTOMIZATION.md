@@ -286,10 +286,10 @@ Structural changes:
   a label, the URL, a visibility flag and an icon. Reorder the markup, restyle with CSS; the
   behaviour (external links open in a new tab with `rel="noopener"`) is set in JS and is worth
   keeping.
-- **The share block** (`.share-block`) is the page's one offer: the permanent URL as selectable
-  text, a Copy link button and Open. It is not demo-only — it is on every card, real or example.
-  If you do not want it, replace it rather than delete it: a visitor who likes your card has no
-  other way to take the link with them. It carries `.no-print`, so it never reaches paper.
+- **The share block is gone.** The page used to show the permanent URL as selectable text with a
+  Copy link button (`.share-block`); it was removed so a visitor card shows only the person and
+  their links. The canonical URL still exists — it feeds the `<link rel="canonical">` tag — and
+  the footer credits the author instead of linking back to the site.
 - **The page theme** comes from `profile_settings` in the profile JSON — `layout` (`pinterest`
   grid or `stack`), `link_shape` (`rounded`, `pill`, `square`), `page_color`, `link_color` and an
   optional `page_background_image` — applied by `applyTheme()` as `--profile-page-*` custom

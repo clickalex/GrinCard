@@ -1,15 +1,17 @@
 # QR Link Card
 
-**One printed card. One permanent QR code. Three different things it can show.**
+**One printed card. One permanent QR code. One link to share.**
 
-A business card whose back is a QR code pointing at a URL *you* own. The URL never
-changes — you print it once — but what a visitor sees depends on how they arrived:
+A business card whose back is a QR code pointing at a URL *you* own. The URL never changes —
+you print it once. The page it opens lists your links in the same theme as the card and carries
+that URL in text with a **Copy link** button, so a visitor can forward your card as easily as
+they scanned it.
 
-| Who is looking | What they see | How |
-| --- | --- | --- |
-| A stranger who scans your card | Your public links only (5 max on the free tier) | `/c/rahul123/` |
-| Someone you handed a link to | Public links **+ one** private link you chose | `/c/rahul123/?t=temp_abc123` |
-| A follower you approved | Everything, including all private links | signed in, or `?viewer=…` in this static version |
+| What you hand someone | What they get |
+| --- | --- |
+| The printed card | `/c/rahul123/` — your public links, 5 max on the free tier |
+| A link to one private item | `/c/rahul123/?t=temp_abc123` — that page, plus the one link the token unlocks |
+| Nothing at all for now | edit `profile-data/<username>.json` — the URL is unchanged, the links are not |
 
 That is the whole idea: the *card* is permanent, the *content* behind it is not.
 
@@ -83,11 +85,9 @@ These run on the deployed copy of this repository, using the fixture profiles in
 
 | Page | What it shows |
 | --- | --- |
-| [Example profiles](https://clickalex.github.io/GrinCard/examples/) | Six demo profiles, with a link for each of the four tiers |
-| [Public view](https://clickalex.github.io/GrinCard/profile/?u=rahul123&demo=1) | What a stranger's phone opens |
-| [Temporary link](https://clickalex.github.io/GrinCard/profile/?u=rahul123&t=temp_demo_live&demo=1) | One private link unlocked, with an expiry countdown |
-| [Expired temporary link](https://clickalex.github.io/GrinCard/profile/?u=rahul123&t=temp_demo_expired&demo=1) | The graceful fallback — no error page, just the public view |
-| [Approved follower](https://clickalex.github.io/GrinCard/profile/?u=rahul123&viewer=user_priya&demo=1) | Every link visible |
+| [Example profiles](https://clickalex.github.io/GrinCard/examples/) | Six demo profiles, one card theme each, with the share link beside every one |
+| [A card page](https://clickalex.github.io/GrinCard/profile/?u=rahul123&demo=1) | What a phone opens after a scan — links, theme, copy button |
+| [A link to a private item](https://clickalex.github.io/GrinCard/profile/?u=rahul123&t=temp_demo_live&demo=1) | The same page with one extra link, and an expiry countdown |
 | [Card index](https://clickalex.github.io/GrinCard/) | The site root on a fork: your cards, your URLs, your QR codes |
 | [Card builder](https://clickalex.github.io/GrinCard/card-builder/) | Design a card, download print-ready files |
 | [Dashboard](https://clickalex.github.io/GrinCard/dashboard/) | Edit links, mint temporary links, approve followers |
@@ -107,10 +107,17 @@ initials), name, role, tagline and an optional social-post background image. Bac
 with a proper quiet zone, plus your name and URL in text so the card still works if the code is
 damaged.
 
+**Six built-in card themes** — Midnight, Paper, Signal, Bloom, Terminal and Terra. A theme is
+pure data (colours, fonts, layout), so the printed card and the page the link opens are painted
+from one palette, and adding a seventh is one file. Every demo profile in [`examples/`](examples/)
+wears a different one.
+
 **Pinterest-style profile pages** — shared links can appear as visual post cards instead of a
 plain stack. Choose a Pinterest grid or classic stack, rounded/pill/square card shapes, page and
 card colours, a page background image, and an optional `image_url` for every link. These settings
 are stored in the profile JSON, so the shared `/c/<username>/` page updates from the same source.
+The page ends with the card's own URL and a copy button, because "send it to someone" is the one
+thing a visitor ever needs to do here.
 
 **Vector print output** — the download is a real PDF with vector paths and selectable text,
 written at exactly 89 × 51 mm. Not a screenshot of a webpage. Print it at 100% and it is

@@ -1,7 +1,7 @@
 {
   "name": "open-qr-link-card",
   "version": "1.0.0",
-  "description": "Printable QR business cards whose link page changes with the visitor. Fork it, edit one JSON file, deploy to GitHub Pages, print the card.",
+  "description": "Printable QR business cards with one permanent link to share, themed to match the card. Fork it, edit one JSON file, deploy to GitHub Pages, print the card.",
   "private": true,
   "scripts": {
     "test": "node --test tests/access.test.js tests/qr.test.js tests/card.test.js tests/generator.test.js tests/dom.test.js tests/tools.test.js",

@@ -61,10 +61,10 @@
   /**
    * Is this a demo/example context rather than someone's real card?
    *
-   * The tier switcher and the "this is not real access control" note are useful
-   * to a person evaluating the project and noise (plus a small information leak)
-   * on a real card, so they only render for examples — a page pointed at
-   * `examples/`, or an explicit `?demo=1`.
+   * Two things hinge on it: which directory the profile JSON is read from (the
+   * fixtures live in `examples/`), and whether the page counts as an evaluation
+   * view that must not carry the owner's navigation. A page pointed at
+   * `examples/`, or one with an explicit `?demo=1`, is the demo.
    */
   function isDemoContext(p) {
     var body = document.body;

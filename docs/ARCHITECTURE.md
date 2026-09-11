@@ -329,9 +329,9 @@ So the honest statement of V1's guarantee is:
 > everything.
 
 That is a demonstration, and it is fine for a price list or a portfolio draft. It is not fine
-for anything that would hurt you if it were public. The UI says so out loud — the profile
-page's scenario switcher carries the line *"this is a demo, not real access control"*, and
-linking here.
+for anything that would hurt you if it were public. The UI says so out loud: the
+[examples gallery](../examples/) leads with *"these are demonstrations, not enforcement"*, and
+the card page itself links here rather than promising more than a static host can keep.
 
 ### What V2 changes
 
@@ -394,10 +394,10 @@ card-templates/card-templates.js   template-1: { background: {from: '#141428', t
                                           consumed by assets/styles.css
 ```
 
-Change a template's accent colour and the card, the profile page, the tier banner and the
-link buttons all change together, because they are all reading the same registry. There is no
-second copy of the palette to keep in sync, which is the usual way this kind of promise gets
-broken.
+Change a template's accent colour and the card, the profile page, its link cards, its share
+block and the print preview all change together, because they are all reading the same registry.
+There is no second copy of the palette to keep in sync, which is the usual way this kind of
+promise gets broken.
 
 ---
 
@@ -450,7 +450,7 @@ Six suites, 168 tests, no browser required:
 | `tests/card.test.js` | The display list is correct; the SVG is well formed; the PDF parses in `pdfjs-dist`; **a QR rendered from the PDF at 300 DPI decodes with `jsQR` to the exact profile URL** |
 | `tests/access.test.js` | Every tier transition, every token failure reason, validation and limits |
 | `tests/generator.test.js` | Batch parsing, paper layout, quiet zones, sheet PDF; **printed sheet codes decode back to their exact URLs** |
-| `tests/dom.test.js` | Every page, executed in `jsdom` with real scripts and real events: all four visitor scenarios, saving, minting, revoking, approving, exporting, the generated stub and the `404.html` fallback booting the real renderer, deployment-root discovery at every depth and under a `/<repo>/` prefix, plus static checks that no page references a missing file or a CDN, that every `getElementById` in a page script exists in its HTML, and that the nine globals do not collide |
+| `tests/dom.test.js` | Every page, executed in `jsdom` with real scripts and real events: public view, token unlock, expiry fallback and follower access, the share link's copy button, saving, minting, revoking, approving, exporting, the generated stub and the `404.html` fallback booting the real renderer, deployment-root discovery at every depth and under a `/<repo>/` prefix, plus static checks that no page references a missing file or a CDN, that every `getElementById` in a page script exists in its HTML, and that the nine globals do not collide |
 | `tests/tools.test.js` | The generators: profile → stub/manifest correctness, the username-must-match-filename rule, a registry never published as a person, stale-manifest detection, idempotency, template validation and registration, link checking, and a guard against references to the pre-fork layout |
 
 The oracles live **outside** the repository (`/tmp/oracle`, or `$QR_ORACLE_DIR`; see

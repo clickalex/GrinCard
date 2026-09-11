@@ -105,7 +105,7 @@ pre code { background: none; padding: 0; }
 .btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
 .btn-ghost { --btn-bg: transparent; --btn-fg: var(--page-text); --btn-border: var(--page-border); }
 .btn-ghost:hover { --btn-bg: rgba(20, 20, 30, .04); box-shadow: none; }
-.btn-accent { --btn-bg: var(--accent); --btn-fg: #1a1a12; }
+.btn-accent { --btn-bg: var(--accent); --btn-fg: var(--accent-fg, #1a1a12); }
 .btn-danger { --btn-bg: transparent; --btn-fg: var(--danger); --btn-border: rgba(176, 42, 42, .35); }
 .btn-sm { min-height: 34px; padding: 5px 11px; font-size: 13px; border-radius: 8px; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -170,7 +170,6 @@ legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 6px; }
 .badge-public { background: rgba(28, 124, 84, .12); color: var(--ok); border-color: rgba(28, 124, 84, .25); }
 .badge-private { background: rgba(168, 100, 26, .12); color: var(--warn); border-color: rgba(168, 100, 26, .28); }
 .badge-pending { background: rgba(20, 20, 30, .07); color: var(--page-muted); border-color: var(--page-border); }
-.badge-tier { background: var(--page-text); color: #fff; }
 
 .notice {
   border-radius: 12px; padding: 12px 14px; font-size: 14px; margin-bottom: 14px;
@@ -187,7 +186,7 @@ legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 6px; }
 .profile-shell {
   min-height: 100vh;
   background:
-    linear-gradient(rgba(246,246,244,.78), rgba(246,246,244,.78)),
+    var(--profile-page-veil, linear-gradient(rgba(246,246,244,.78), rgba(246,246,244,.78))),
     var(--profile-page-image),
     radial-gradient(1200px 600px at 50% -10%, var(--bg-2), transparent 60%),
     linear-gradient(180deg, var(--profile-page-color, var(--bg)), var(--profile-page-color, var(--bg)) 70%, var(--bg-2));
@@ -228,10 +227,22 @@ legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 6px; }
 .profile-role { color: var(--muted); font-size: .98rem; margin: 4px 0 0; }
 .profile-tagline { color: var(--faint); font-size: .85rem; margin: 8px auto 0; max-width: 34ch; }
 
-.tier-banner {
-  display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap;
-  font-size: 13px; color: var(--muted); margin: 0 0 18px; text-align: center;
+/* The one link a profile page offers: the permanent URL, as text, plus Copy. */
+.share-block {
+  margin-top: 22px; padding: 14px 16px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border);
 }
+.share-block h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--faint); margin: 0 0 8px;
+}
+.share-block .url-row { margin: 0; }
+.share-block .btn { --btn-bg: var(--accent); --btn-fg: var(--accent-fg, #1a1a12); --btn-border: transparent; }
+.share-block .btn-ghost { --btn-bg: transparent; --btn-fg: var(--text); --btn-border: var(--border); }
+.share-block .btn-ghost:hover { --btn-bg: rgba(127, 127, 127, .16); box-shadow: none; }
+.share-block .url-value { background: rgba(127, 127, 127, .16); border-color: var(--border); color: var(--text); }
+.share-url { flex: 1 1 260px; min-width: 0; word-break: break-all; }
+.share-block p { margin: 8px 0 0; }
 
 .links { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
 .link-card {
@@ -261,20 +272,6 @@ legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 6px; }
 
 .profile-foot { margin-top: 26px; text-align: center; color: var(--faint); font-size: 12.5px; }
 .profile-foot a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
-
-.scenario-switch {
-  margin-top: 22px; padding: 14px; border-radius: var(--radius);
-  background: rgba(0, 0, 0, .22); border: 1px solid var(--border); font-size: 13px;
-}
-.scenario-switch h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 0 0 10px; }
-.scenario-switch ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.scenario-switch a {
-  display: flex; gap: 8px; align-items: baseline; text-decoration: none; color: var(--muted);
-  padding: 6px 8px; border-radius: 8px;
-}
-.scenario-switch a:hover { background: rgba(255, 255, 255, .08); color: var(--text); }
-.scenario-switch a[aria-current="true"] { background: var(--accent); color: #1a1a12; font-weight: 600; }
-.scenario-switch .what { font-size: 11.5px; opacity: .8; }
 
 /* ---------- card preview ----------------------------------------------- */
 
@@ -364,7 +361,7 @@ footer.site a { text-decoration: underline; text-underline-offset: 3px; }
 
 @media print {
   body { background: #fff; }
-  .topbar, .no-print, .scenario-switch, .profile-foot { display: none !important; }
+  .topbar, .no-print, .share-block, .profile-foot { display: none !important; }
   .profile-shell { background: #fff; padding: 0; min-height: 0; }
   .panel { box-shadow: none; border-color: #ccc; }
   a[href]::after { content: ""; }
@@ -386,7 +383,7 @@ footer.site a { text-decoration: underline; text-underline-offset: 3px; }
 .steps { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
 .steps li { line-height: 1.55; }
 .steps .step-body { display: block; color: var(--page-muted); font-size: 13.5px; margin-top: 3px; }
-.steps code, .tier-card code, .url-row code { font-size: 12.5px; }
+.steps code, .theme-card code, .url-row code { font-size: 12.5px; }
 
 /* one row per profile */
 .cards-index { display: block; }
@@ -412,9 +409,11 @@ footer.site a { text-decoration: underline; text-underline-offset: 3px; }
   border-radius: 9px; padding: 8px 10px; font-size: 13px;
 }
 
-.tier-card { border: 1px solid var(--page-border); border-radius: 12px; padding: 14px; background: rgba(20,20,30,.02); }
-.tier-card h3 { margin: 0 0 6px; font-size: 15px; }
-.tier-card p { margin: 0; }
+.theme-card { border: 1px solid var(--page-border); border-radius: 12px; padding: 14px; background: rgba(20,20,30,.02); display: flex; flex-direction: column; gap: 8px; }
+.theme-card h3 { margin: 0; font-size: 15px; }
+.theme-card p { margin: 0; }
+.theme-card a { margin-top: auto; }
+.theme-swatch { width: 100%; height: 42px; border-radius: 9px; border: 1px solid var(--page-border); }
 
 .badge-muted { background: rgba(20,20,30,.06); color: var(--page-muted); border-color: var(--page-border); }
 
@@ -443,18 +442,20 @@ footer.site a { text-decoration: underline; text-underline-offset: 3px; }
 .dash-head h1 { margin: 0 0 2px; }
 .dash-head .btn-row { margin-left: auto; }
 
-/* the tier switcher on a profile page, and the same list on examples/ */
-.scenario-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.example-scenarios { grid-template-columns: 1fr; }
-@media (min-width: 720px) { .example-scenarios { grid-template-columns: repeat(2, 1fr); } }
-.example-scenarios a,
-.example-scenarios > li > span {
-  display: block; border: 1px solid var(--page-border); border-radius: 11px;
-  padding: 11px 13px; text-decoration: none; color: inherit; background: #fff;
+/* the one share row per demo profile on examples/ */
+.example-share { display: grid; gap: 8px; }
+.example-share .url-row { margin: 2px 0 0; }
+.example-share .url-value { background: rgba(20,20,30,.04); }
+
+/* which theme a demo is wearing — the swatch is the template's own palette */
+.theme-tag {
+  display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px;
+  color: var(--page-muted);
 }
-.example-scenarios a:hover { border-color: var(--page-text); }
-.scenario-label { display: block; font-weight: 600; font-size: 14px; }
-.scenario-note { display: block; margin-top: 2px; }
+.theme-tag .swatch-dot {
+  width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--page-border);
+  background: var(--dot, #ccc); flex: 0 0 14px;
+}
 
 /* the collapsible "custom domain" override in the dashboard */
 .advanced { margin-top: 8px; }

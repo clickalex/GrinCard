@@ -54,7 +54,15 @@
   ],
   "card_settings": {
     "template_id": "template-1",
-    "primary_color": "#1a1a2e",
-    "show_photo": true
+    "primary_color": "#141428",
+    "accent_color": "#f2b134",
+    "show_photo": true,
+    "size": "standard"
+  },
+  "profile_settings": {
+    "layout": "pinterest",
+    "link_shape": "rounded",
+    "page_color": "#141428",
+    "link_color": "#20203f"
   }
 }

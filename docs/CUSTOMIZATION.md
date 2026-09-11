@@ -282,13 +282,20 @@ Rules that keep the output printable:
 
 Structural changes:
 
-- **The link list** is rendered by `assets/profile.js` into `.link-card` elements. Each has
+- **The link list** is rendered by `profile/profile.js` into `.link-card` elements. Each has
   a label, the URL, a visibility flag and an icon. Reorder the markup, restyle with CSS; the
   behaviour (external links open in a new tab with `rel="noopener"`) is set in JS and is worth
   keeping.
-- **The tier banner** explains what the visitor is seeing. If you change the tier names, change
-  it too — a visitor who cannot tell why they see three links instead of five will assume your
-  card is broken.
+- **The share block** (`.share-block`) is the page's one offer: the permanent URL as selectable
+  text, a Copy link button and Open. It is not demo-only — it is on every card, real or example.
+  If you do not want it, replace it rather than delete it: a visitor who likes your card has no
+  other way to take the link with them. It carries `.no-print`, so it never reaches paper.
+- **The page theme** comes from `profile_settings` in the profile JSON — `layout` (`pinterest`
+  grid or `stack`), `link_shape` (`rounded`, `pill`, `square`), `page_color`, `link_color` and an
+  optional `page_background_image` — applied by `applyTheme()` as `--profile-page-*` custom
+  properties on top of the card template's palette. The pale veil that keeps type legible over a
+  background photo is only painted when there is a photo, so a dark theme stays dark. Each profile
+  in `examples/` sets a different one, which is what makes that page a theme gallery.
 - **Print rules** are at the bottom of the stylesheet (`@media print`). The profile page is not
   meant to be printed, but the print sheet is, and it hides every piece of chrome.
 
@@ -333,16 +340,16 @@ Also supported in the URL:
 | `?u=rahul123` | Which profile to show |
 | `?t=temp_abc123` | A temporary-access token |
 | `?viewer=user_priya` | Simulate being an approved follower (V1 demo only; V2 uses a session) |
-| `?demo=1` | Read the shipped fixtures instead of your own profiles, and show the tier switcher |
+| `?demo=1` | Read the shipped fixtures instead of your own profiles, and treat the page as an evaluation view |
 
 The first three combine, and precedence is follower → token → public.
 
 `?demo=1` does two things that have to agree. It repoints the data directory at `examples/`
-(`Store.dataDir()`, unless the page sets `<body data-profile-dir>` itself), and it lets
-`profile/boot.js` render the four-visitor switcher plus the "this is not real access control"
-note. Splitting those would mean a switcher offering scenarios for people the page cannot find —
+(`Store.dataDir()`, unless the page sets `<body data-profile-dir>` itself), and it tells
+`profile/boot.js` that this is a demo rather than somebody's real card, so the page drops the
+owner's navigation. Splitting those would mean a demo link for a person the page cannot find —
 which is exactly what happened when the fixtures moved out of `profile-data/`: the README's demo
-URLs and every scenario link in the examples gallery rendered "No profile here".
+URLs and every link in the examples gallery rendered "No profile here".
 
 **So any link that names a fixture must carry the flag.** Navigating to another page loses the
 current page's `data-profile-dir`, and the destination has no way to know it was handed a fixture
@@ -352,9 +359,10 @@ username. `tests/dom.test.js` sweeps the whole repository for links to a name in
 The flag is only ever set on fixture URLs, where every link is fake and public. Without it a
 username that is not in `profile-data/` shows the empty state rather than falling back to the
 fixtures — rendering a stranger's example profile on somebody's own domain would be worse than an
-empty page. On a real profile the switcher never renders: publishing
-`/profile/?viewer=user_priya` would be publishing a way to see your followers-only links, and this
-project's whole premise is that a URL you hand out is not a URL you can take back.
+empty page. And nothing on a real profile invites anybody to guess at a `?viewer=` shortcut:
+publishing `/profile/?viewer=user_priya` would be publishing a way to see your followers-only
+links, and this project's whole premise is that a URL you hand out is not a URL you can take
+back.
 
 ### Moving hosts, and the one override
 

@@ -134,6 +134,112 @@
         hintSizePt: 6.5,
         stripe: false
       }
+    },
+    {
+      id: 'template-4',
+      name: 'Bloom',
+      description: 'Blush gradient, centred serif name, rose rule. Made for studios and makers.',
+      free: true,
+      layout: 'centered',
+      front: {
+        background: { type: 'gradient', from: '#fff5f6', to: '#ffe3e8', angle: 160 },
+        accent: '#d1466a',
+        nameColor: '#3c1320',
+        roleColor: 'rgba(60,19,32,0.72)',
+        taglineColor: 'rgba(60,19,32,0.62)',
+        monogramBg: '#ffdfe6',
+        monogramColor: '#a52c4e',
+        photoShape: 'circle',
+        photoRing: 'rgba(209,70,106,0.75)',
+        rules: 'rgba(209,70,106,0.26)',
+        nameFont: 'serif',
+        nameWeight: 700,
+        nameSizePt: 18,
+        roleSizePt: 9.5,
+        taglineSizePt: 7.5,
+        stripe: false
+      },
+      back: {
+        background: { type: 'gradient', from: '#fff5f6', to: '#ffe9ee', angle: 160 },
+        accent: '#d1466a',
+        textColor: '#3c1320',
+        mutedColor: 'rgba(60,19,32,0.58)',
+        qrTile: '#ffffff',
+        captionSizePt: 8,
+        hintSizePt: 6.5,
+        stripe: false
+      }
+    },
+    {
+      id: 'template-5',
+      name: 'Terminal',
+      description: 'Ink-blue black, phosphor green, monospace-adjacent. Built for engineers.',
+      free: true,
+      layout: 'photo-left',
+      front: {
+        background: { type: 'gradient', from: '#0b1020', to: '#131c31', angle: 120 },
+        accent: '#4ec98a',
+        nameColor: '#eaf2ff',
+        roleColor: 'rgba(234,242,255,0.70)',
+        taglineColor: 'rgba(234,242,255,0.5)',
+        monogramBg: 'rgba(78,201,138,0.16)',
+        monogramColor: '#4ec98a',
+        photoShape: 'rounded',
+        photoRing: 'rgba(78,201,138,0.85)',
+        rules: 'rgba(78,201,138,0.28)',
+        nameFont: 'sans',
+        nameWeight: 700,
+        nameSizePt: 16.5,
+        roleSizePt: 9,
+        taglineSizePt: 7.5,
+        stripe: true,
+        border: 'rgba(78,201,138,0.30)'
+      },
+      back: {
+        background: { type: 'gradient', from: '#0b1020', to: '#101827', angle: 120 },
+        accent: '#4ec98a',
+        textColor: '#eaf2ff',
+        mutedColor: 'rgba(234,242,255,0.60)',
+        qrTile: '#ffffff',
+        captionSizePt: 8,
+        hintSizePt: 6.5,
+        stripe: true
+      }
+    },
+    {
+      id: 'template-6',
+      name: 'Terra',
+      description: 'Clay and cream, soft ink type, no colour ink on the back. Food and craft.',
+      free: true,
+      layout: 'photo-left',
+      front: {
+        background: { type: 'solid', color: '#f6ece0' },
+        accent: '#b4530a',
+        nameColor: '#2b1a12',
+        roleColor: '#6c5040',
+        taglineColor: '#7c6353',
+        monogramBg: '#e8d5bd',
+        monogramColor: '#7a3a13',
+        photoShape: 'circle',
+        photoRing: '#d8b48c',
+        rules: 'rgba(43,26,18,0.16)',
+        nameFont: 'serif',
+        nameWeight: 700,
+        nameSizePt: 17,
+        roleSizePt: 9.5,
+        taglineSizePt: 7.5,
+        stripe: false
+      },
+      back: {
+        background: { type: 'solid', color: '#f6ece0' },
+        accent: '#b4530a',
+        textColor: '#2b1a12',
+        mutedColor: '#6c5040',
+        qrTile: '#ffffff',
+        captionSizePt: 8,
+        hintSizePt: 6.5,
+        stripe: false
+      }
     }
   ];
 

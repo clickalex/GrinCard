@@ -137,8 +137,19 @@ reachable through `all()` — see [Contributed templates](#contributed-templates
 `background` is either `{ type: 'solid', color }` or
 `{ type: 'gradient', from, to, angle }` with `angle` in degrees.
 
-Shipped templates: `template-1` **Midnight** (`photo-left`), `template-2` **Paper**
-(`centered`), `template-3` **Signal** (`photo-left`).
+Shipped templates — `TPL.TEMPLATES`, the built-ins every deployment has:
+
+| `id` | Name | Layout | Read it as |
+| --- | --- | --- | --- |
+| `template-1` | Midnight | `photo-left` | navy gradient, warm accent |
+| `template-2` | Paper | `centered` | off-white, ink type, cheap to print |
+| `template-3` | Signal | `photo-left` | black on white, maximum contrast |
+| `template-4` | Bloom | `centered` | blush gradient, serif name |
+| `template-5` | Terminal | `photo-left` | ink-blue, phosphor green |
+| `template-6` | Terra | `photo-left` | clay and cream, for food and craft |
+
+The fixture profiles in `examples/` each wear a different one, so the gallery page is also the
+theme catalogue. A contributed template is not in this array — it joins through `all()`.
 
 `layout` is the only field that changes the *structure* of a card — `Card.buildFront` branches
 on it. Everything else is colour and type, so a new template that reuses an existing layout is

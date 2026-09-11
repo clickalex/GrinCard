@@ -189,13 +189,6 @@
       ]));
     }
 
-    if (access.hiddenCount > 0) {
-      root.appendChild(el('p', { class: 'tiny center mt2 no-print', text:
-        access.hiddenCount + (access.hiddenCount === 1 ? ' link is' : ' links are') +
-        ' private. ' + profile.display_name.split(' ')[0] +
-        ' shares a link to those when someone needs them.' }));
-    }
-
     // The canonical URL is derived, never typed: a fork's cards point at the fork.
     // The page no longer shows a share section — the URL only feeds the
     // <link rel="canonical"> tag below.
@@ -211,9 +204,7 @@
     }
 
     root.appendChild(el('footer', { class: 'profile-foot no-print' }, [
-      el('p', { text: 'Mohammad Umair' }),
-      el('p', { class: 'tiny', html:
-        'This URL never changes. Edit the links and every printed card updates itself.' })
+      el('p', { text: 'Created by Mohammad Umair' })
     ]));
   }
 

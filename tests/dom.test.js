@@ -434,7 +434,9 @@ test('profile page: a stranger sees only public links', { skip: NO_JSDOM }, asyn
   assert.deepEqual(errors, [], errors.join('\n'));
   const labels = textOf(doc, '.link-card .label');
   assert.deepEqual(labels, ['Instagram', 'Portfolio', 'Email']);
-  assert.match(doc.body.textContent, /2 links are private/);
+  // A stranger is simply shown the public links. The page no longer announces how
+  // many were withheld — that line was noise on a card someone else is reading.
+  assert.doesNotMatch(doc.body.textContent, /links? (is|are) private/);
   // The page must not advertise the mechanism to a stranger — no tier labels, and
   // no list of "other ways to view this".
   assert.equal(doc.querySelector('.tier-banner'), null);
@@ -507,12 +509,14 @@ test('profile page: no share section; the footer credits the author', { skip: NO
     'no share section — the page no longer offers the card URL as a block');
   assert.equal(doc.querySelector('.share-url'), null, 'no copyable URL row either');
 
-  // The footer credits the author instead of linking back to the site.
+  // The footer is one line of credit, nothing else: no "this URL never changes"
+  // explanation, and no link back to the site index.
   const foot = doc.querySelector('.profile-foot');
   assert.ok(foot, 'the page still has a footer');
-  assert.match(foot.textContent, /Mohammad Umair/, 'the footer credits Mohammad Umair');
-  assert.equal(foot.querySelector('a[href*="index.html"]'), null,
-    'and the credit is not a link back to the site index');
+  assert.equal(foot.textContent.trim(), 'Created by Mohammad Umair',
+    'the footer is a single credit line');
+  assert.equal(foot.querySelectorAll('p').length, 1, 'and only one line of it');
+  assert.equal(foot.querySelector('a'), null, 'and the credit is not a link');
 });
 
 test('profile page: external links are safe (rel=noopener, target=_blank)', { skip: NO_JSDOM }, async () => {

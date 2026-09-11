@@ -32,6 +32,9 @@ const NO_PDFJS = ORACLE.has('pdfjs-dist') ? false : ORACLE.INSTALL_HINT;
 const ROOT = path.join(__dirname, '..');
 const { linkableFiles, generatedStubNotice } = require('../tools/check-links.js');
 const ORIGIN = 'http://localhost:8080';
+// The registry, not a hardcoded count: a test that says "3 templates" turns every new
+// theme into a test edit, which is exactly the friction the template system avoids.
+const TPL = require('../card-templates/card-templates.js');
 
 function repoFile(rel, prefix) {
   // A GitHub Pages project site serves everything from /<repo>/, so a request
@@ -423,7 +426,7 @@ test('no page depends on a CDN or an npm runtime dependency', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The public profile page (§8.1) — the four visitor scenarios
+// The public profile page (§8.1) — what each kind of visitor sees
 // ---------------------------------------------------------------------------
 
 test('profile page: a stranger sees only public links', { skip: NO_JSDOM }, async () => {
@@ -431,8 +434,11 @@ test('profile page: a stranger sees only public links', { skip: NO_JSDOM }, asyn
   assert.deepEqual(errors, [], errors.join('\n'));
   const labels = textOf(doc, '.link-card .label');
   assert.deepEqual(labels, ['Instagram', 'Portfolio', 'Email']);
-  assert.match(doc.querySelector('.tier-banner').textContent, /Public view/);
   assert.match(doc.body.textContent, /2 links are private/);
+  // The page must not advertise the mechanism to a stranger — no tier labels, and
+  // no list of "other ways to view this".
+  assert.equal(doc.querySelector('.tier-banner'), null);
+  assert.equal(doc.querySelector('.scenario-switch'), null);
   assert.equal(doc.title, 'Rahul Kumar — QR Link Card');
   // The page must carry the template's palette so card and page match.
   const bg = doc.documentElement.style.getPropertyValue('--bg');
@@ -446,7 +452,6 @@ test('profile page: a valid temporary token unlocks exactly one private link', {
   const labels = textOf(doc, '.link-card .label');
   assert.deepEqual(labels, ['Instagram', 'Portfolio', 'Email', 'Pricing List']);
   assert.ok(!labels.includes('WhatsApp'), 'the other private link must stay hidden');
-  assert.match(doc.querySelector('.tier-banner').textContent, /Temporary access/);
   const unlocked = doc.querySelector('.link-card[data-just-unlocked="true"]');
   assert.ok(unlocked, 'the unlocked link should be marked');
   assert.match(unlocked.textContent, /Unlocked/);
@@ -457,7 +462,6 @@ test('profile page: an expired token falls back to public and says so', { skip: 
     { search: '?u=rahul123&t=temp_demo_expired', profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
   assert.deepEqual(textOf(doc, '.link-card .label'), ['Instagram', 'Portfolio', 'Email']);
-  assert.match(doc.querySelector('.tier-banner').textContent, /Public view/);
   assert.match(doc.querySelector('.notice-warn').textContent, /expired/i);
 });
 
@@ -467,7 +471,6 @@ test('profile page: an approved follower sees every link', { skip: NO_JSDOM }, a
   assert.deepEqual(errors, [], errors.join('\n'));
   assert.deepEqual(textOf(doc, '.link-card .label'),
     ['Instagram', 'Portfolio', 'Email', 'Pricing List', 'WhatsApp']);
-  assert.match(doc.querySelector('.tier-banner').textContent, /Approved follower/);
 });
 
 test('profile page: a non-approved viewer id gets the public view', { skip: NO_JSDOM }, async () => {
@@ -488,17 +491,29 @@ test('profile page: an unknown username renders a helpful 404', { skip: NO_JSDOM
   assert.match(doc.body.textContent, /profile-data\//, 'should explain where profiles live');
 });
 
-test('profile page: the scenario switcher offers all four tiers', { skip: NO_JSDOM }, async () => {
-  const { doc, errors } = await loadPage('profile/index.html', { search: '?u=rahul123', profileDir: '../examples/' });
+test('profile page: the one link it offers is the card\'s permanent URL', { skip: NO_JSDOM }, async () => {
+  const { doc, win, errors } = await loadPage('profile/index.html',
+    { search: '?u=rahul123', profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
-  const links = Array.from(doc.querySelectorAll('.scenario-switch .scenario-list a'))
-    .map(a => a.getAttribute('href'));
-  assert.equal(links.length, 4);
-  assert.ok(links.some(h => /t=temp_demo_live/.test(h)));
-  assert.ok(links.some(h => /t=temp_demo_expired/.test(h)));
-  assert.ok(links.some(h => /viewer=user_priya/.test(h)));
-  assert.match(doc.querySelector('.scenario-switch').textContent, /not real access control/i,
-    'the page must be honest that V1 does not enforce privacy');
+
+  const blocks = doc.querySelectorAll('.share-block');
+  assert.equal(blocks.length, 1, 'exactly one share block — the card has one link');
+  const block = blocks[0];
+  assert.ok(block, 'the page should offer the card link');
+  assert.equal(block.textContent.match(/https?:\/\/[^\s]+/g).length, 1,
+    'and it names that URL once, so there is nothing to confuse');
+  assert.equal(block.querySelector('.share-url').textContent, ORIGIN + '/c/rahul123/',
+    'the URL is shown as text, so it can be selected without the button');
+  assert.match(block.textContent, /permanent/i, 'the page says the address does not move');
+
+  const button = block.querySelector('button');
+  assert.equal(button.textContent, 'Copy link');
+  button.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 60));
+  // jsdom has no clipboard, so this proves the click reached the handler and the
+  // button reported the result — not that the bytes landed on a real clipboard.
+  assert.notEqual(button.textContent, 'Copy link', 'the click must be wired to the copy handler');
+  assert.equal(button.disabled, true, 'and lock the button while it reports back');
 });
 
 test('profile page: external links are safe (rel=noopener, target=_blank)', { skip: NO_JSDOM }, async () => {
@@ -530,7 +545,8 @@ test('dashboard: loads the demo profile into the form', { skip: NO_JSDOM }, asyn
   assert.equal(doc.getElementById('f-name').value, 'Rahul Kumar');
   assert.equal(doc.getElementById('f-role').value, 'Freelance Illustrator');
   assert.equal(doc.querySelectorAll('#link-rows .link-row').length, 5);
-  assert.equal(doc.querySelectorAll('.template-option').length, 3);
+  assert.equal(doc.querySelectorAll('.template-option').length, TPL.TEMPLATES.length,
+    'the picker offers every built-in template');
   assert.match(doc.getElementById('link-count').textContent, /3 public/);
   assert.match(doc.getElementById('dash-subtitle').textContent, /Rahul Kumar/);
 });
@@ -668,7 +684,8 @@ test('dashboard: switching template re-renders the preview and the picker', { sk
   const { doc, errors } = await loadPage('dashboard/index.html', { search: '?u=rahul123', settleMs: 700, profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
   const options = doc.querySelectorAll('.template-option');
-  assert.equal(options.length, 3);
+  assert.equal(options.length, TPL.TEMPLATES.length);
+  assert.ok(options.length >= 6, 'the built-ins now include Bloom, Terminal and Terra');
   assert.equal(options[0].getAttribute('aria-pressed'), 'true');
   options[1].dispatchEvent(new doc.defaultView.MouseEvent('click', { bubbles: true }));
   await new Promise(r => setTimeout(r, 300));
@@ -683,25 +700,20 @@ test('dashboard: switching template re-renders the preview and the picker', { sk
   assert.ok(!/NaN|undefined/.test(svg), 'the rendered card must not contain NaN/undefined');
 });
 
-test('dashboard: the visitor simulation links cover all three tiers', { skip: NO_JSDOM }, async () => {
+test('dashboard: the share hero is the only link panel, and it is complete', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('dashboard/index.html', { search: '?u=rahul123', settleMs: 700, profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
-  const rows = Array.from(doc.querySelectorAll('#visitor-links .row'));
-  assert.equal(rows.length, 3);
-  assert.match(rows[0].textContent, /Stranger/);
-  assert.match(rows[1].textContent, /Temporary link/);
-  assert.match(rows[2].textContent, /Approved follower/);
-  const hrefs = rows.map(r => r.querySelector('a').getAttribute('href'));
-  // The simulation must use the canonical printed URL, not the ?u= deep link:
-  // the point is to show the owner what a person who scanned the card would see.
-  assert.ok(hrefs.every(h => h.includes('c/rahul123/')), hrefs.join(' | '));
-  // Relative hrefs must resolve to the site root from a directory URL. /dashboard/
-  // has no filename to replace, so this is what Store.rootRelative() is for — and
-  // it is the same helper every other page uses, at whatever depth it is running.
-  hrefs.forEach(h => {
-    const abs = new URL(h, 'http://localhost:8080/dashboard/');
-    assert.equal(abs.pathname, '/c/rahul123/', 'resolved to ' + abs.href);
-  });
+  // "See it as a visitor" compared four ways to read one URL. An owner does not need
+  // the comparison; they need the link, on screen and on the clipboard.
+  assert.equal(doc.getElementById('visitor-links'), null, 'the visitor simulation panel is gone');
+  assert.equal(doc.getElementById('view-profile'), null, 'and so is its section');
+
+  const share = doc.getElementById('f-share-url');
+  assert.ok(share, 'the shareable link is still shown in full');
+  assert.match(share.value, /\/c\/rahul123\/$/, 'derived from this deployment: ' + share.value);
+  assert.equal(doc.getElementById('btn-copy-share').textContent, 'Copy link');
+  // The minted token URLs live in their own panel; the hero is the card's one link.
+  assert.ok(doc.getElementById('share-hero').contains(share));
 });
 
 test('dashboard: the QR tool link carries this card\'s profile URL', { skip: NO_JSDOM }, async () => {
@@ -942,8 +954,10 @@ test('card builder: changing the username changes the URL encoded in the QR', { 
 test('card preview page: shows every template plus QR metadata', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('templates/index.html', { settleMs: 900, profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
-  assert.equal(doc.querySelectorAll('#profile-picker button').length, 2,
-    'both example profiles should be offered');
+  const exampleNames = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8')).profiles;
+  assert.equal(doc.querySelectorAll('#profile-picker button').length, exampleNames.length,
+    'one picker button per fixture profile');
   // One panel per template, built-ins plus contributed; each panel shows both
   // sides twice (normal content and the long-text stress row).
   const panels = doc.querySelectorAll('#templates .panel').length;
@@ -1095,7 +1109,8 @@ test('build-links generates a stub that runs the shared renderer', { skip: NO_JS
     assert.deepEqual(errors, [], errors.join('\n'));
     assert.deepEqual(textOf(doc, '.link-card .label'), ['Instagram', 'Portfolio', 'Email'],
       'a stranger at /c/rahul123/ must see the public links and nothing else');
-    assert.match(doc.querySelector('.tier-banner').textContent, /Public view/);
+    assert.equal(doc.querySelector('.share-block .share-url').textContent, ORIGIN + '/c/rahul123/',
+      'the printed URL is the one thing this page offers to copy');
     assert.equal(doc.title, 'Rahul Kumar — QR Link Card');
     // Links must climb two levels from here, or the stub would 404 its own assets.
     const home = doc.querySelector('header.topbar .brand');
@@ -1132,12 +1147,15 @@ test('the renderer resolves the person from the page when no host has booted', {
   //
   // On a one-person deployment that is indistinguishable from correct, which is why
   // the test above passes either way. With a second person it renders somebody else
-  // at a printed card URL. examples/ lists meera9 before rahul123, so asking for
-  // rahul123 is the discriminating case: the wrong answer is a real profile.
+  // at a printed card URL. The fallback answers with the FIRST name in the manifest,
+  // so asking for anybody else is the discriminating case: the wrong answer would be a
+  // real profile rather than an empty state. Which name that is, and how many fixtures
+  // there are, comes from the manifest, so adding a demo cannot rot this test.
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8'));
-  assert.equal(manifest.profiles[0], 'meera9', 'this test needs meera9 listed first, as the decoy');
+  assert.ok(manifest.profiles.length > 1,
+    'needs at least two fixtures, or a fallback to the first profile is undetectable');
   const asked = manifest.profiles[manifest.profiles.length - 1];
-  assert.equal(asked, 'rahul123');
+  assert.notEqual(asked, manifest.profiles[0], 'the name asked for must not be the fallback answer');
 
   // boot.js omitted on purpose. In production this is the state profile.js is in when
   // selfStart()'s timer beats boot.js over the network: 404.html has already put
@@ -1425,8 +1443,8 @@ test('?demo=1 selects the fixture data, so a demo link is not an empty page', { 
   // The fixtures live in examples/, not profile-data/ — they moved there so a fork ships
   // one obvious starter profile of its own. But a link like /profile/?u=rahul123&demo=1
   // navigates to a page with no data-profile-dir attribute of its own, so the flag has to
-  // carry the meaning too. Without it, the README's five advertised demo URLs and every
-  // scenario link in the examples gallery rendered "No profile here".
+  // carry the meaning too. Without it, the README's demo URLs and every share link in
+  // the examples gallery rendered "No profile here".
   const demo = await loadPage('profile/index.html', { search: '?u=rahul123&demo=1', settleMs: 700 });
   assert.deepEqual(demo.errors, [], demo.errors.join('\n'));
   const text = demo.doc.body.textContent;
@@ -1436,13 +1454,13 @@ test('?demo=1 selects the fixture data, so a demo link is not an empty page', { 
   assert.match(demo.win.Store.dataDir(), /(^|\/)examples\/$/,
     '?demo=1 repoints the data directory: ' + demo.win.Store.dataDir());
 
-  // The registry has to follow, or the temporary-link scenarios silently degrade to the
-  // public tier — which looks like a working page and is the wrong answer.
+  // The registry has to follow, or a shared temporary link silently degrades to the
+  // public view — which looks like a working page and is the wrong answer.
   const tokened = await loadPage('profile/index.html',
     { search: '?u=rahul123&t=temp_demo_live&demo=1', settleMs: 700 });
   assert.deepEqual(tokened.errors, [], tokened.errors.join('\n'));
   assert.ok(/Pricing|WhatsApp/i.test(tokened.doc.body.textContent),
-    'the token scenario must unlock a private link from examples/tokens.json');
+    'a token in the URL must unlock a private link from examples/tokens.json');
 
   // Without the flag, a real deployment must NOT fall back to the fixtures. Rendering a
   // stranger's example profile on somebody's own domain would be worse than an empty page.
@@ -1475,7 +1493,10 @@ test('every link to a fixture profile carries the demo flag', () => {
     if (/^tests[/\\]/.test(path.relative(ROOT, file))) continue;   // tests repoint via profileDir
     const text = fs.readFileSync(file, 'utf8');
     for (const m of text.matchAll(/(?:href|src)\s*=\s*["']([^"']*)["']/g)) {
-      const target = m[1];
+      // Markup writes `&amp;` in an attribute because that is the correct escape, and a
+      // browser resolves it back to `&` before the query is ever parsed. Compare the
+      // resolved form, or every hand-written link in HTML would read as a missing flag.
+      const target = m[1].replace(/&amp;/g, '&');
       if (!/[?&]u=/.test(target)) continue;
       const user = decodeURIComponent((/[?&]u=([^&#]*)/.exec(target) || [, ''])[1]);
       if (!fixtures.has(user)) continue;
@@ -1495,19 +1516,20 @@ test('every link to a fixture profile carries the demo flag', () => {
   assert.deepEqual(offenders, [], offenders.join('\n'));
 });
 
-test('the tier switcher is a demo affordance and stays off a real card', { skip: NO_JSDOM }, async () => {
-  // On the fixtures it is a teaching aid. On someone's real card it would be noise,
-  // and it would advertise that private links exist.
+test('a demo card and a real card offer the same single share link', { skip: NO_JSDOM }, async () => {
+  // There used to be a four-visitor switcher here, shown only on the fixtures. It is
+  // gone on both: on a real card it was noise that advertised private links, and on a
+  // demo it taught a comparison the page no longer makes. What both show is the link.
   const demo = await loadPage('profile/index.html',
     { search: '?u=rahul123', profileDir: '../examples/', settleMs: 900 });
-  assert.ok(demo.doc.querySelector('.scenario-switch'), 'examples should offer the four scenarios');
-  assert.match(demo.doc.querySelector('.scenario-switch').textContent, /not real access control/i);
+  assert.ok(demo.doc.querySelector('.share-block'), 'the demo offers the card link');
+  assert.equal(demo.doc.querySelector('.scenario-switch'), null,
+    'and nothing else: the visitor-comparison switcher is gone');
 
-  const real = await loadPage('profile/index.html',
-    { search: '?u=yourname', settleMs: 900 });
-  assert.equal(real.doc.querySelector('.scenario-switch'), null,
-    'a real profile must not show the tier switcher');
-  assert.ok(real.doc.querySelector('.link-card'), 'but it must still render the links');
+  const real = await loadPage('profile/index.html', { search: '?u=yourname', settleMs: 900 });
+  assert.ok(real.doc.querySelector('.share-block'), 'so does someone else\'s real card');
+  assert.equal(real.doc.querySelector('.scenario-switch'), null);
+  assert.ok(real.doc.querySelector('.link-card'), 'and the links still render');
 });
 
 test('demo profile links hide the owner navigation, like the shareable link', { skip: NO_JSDOM }, async () => {
@@ -1526,9 +1548,8 @@ test('demo profile links hide the owner navigation, like the shareable link', { 
   assert.equal(demo.doc.querySelector('header.topbar'), null,
     'a demo profile link must not show the site topbar');
 
-  // The card itself still renders, including the demo tier switcher — only the
-  // owner chrome is gone.
-  assert.ok(demo.doc.querySelector('.scenario-switch'), 'the demo switcher still works');
+  // The card itself still renders, share link included — only the owner chrome is gone.
+  assert.ok(demo.doc.querySelector('.share-block'), 'the demo keeps its share link');
   assert.ok(demo.doc.querySelector('.link-card'), 'the links still render');
 
   // A genuine owner preview (/profile/?u=real, no demo flag) keeps the navigation.
@@ -1586,23 +1607,22 @@ test('site root: an untouched fork gets setup help, not an empty page', { skip: 
   assert.equal(panel.hidden, false, 'the starter profile is still there, so say what to do');
   assert.match(panel.textContent, /profile-data\//, 'it must name the file to edit');
   assert.match(panel.textContent, /npm run build/, 'it must say how to generate the URL');
-  // The free-tier limit is shown from the rules, so the page cannot drift from them.
-  const Access = doc.defaultView.AccessRules;
-  assert.equal(doc.getElementById('limit-public').textContent,
-    String(Access.LIMITS.maxPublicLinks));
 });
 
 test('site root: a deployment with real profiles drops the setup panel', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('index.html', { settleMs: 900, profileDir: 'examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
+  const names = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8')).profiles;
   const rows = Array.from(doc.querySelectorAll('.card-index-row'));
-  assert.equal(rows.length, 2, 'both example profiles should be listed');
+  assert.equal(rows.length, names.length, 'every fixture profile should be listed');
   assert.equal(doc.getElementById('first-run').hidden, true,
     'setup help is for an untouched fork only');
-  assert.equal(doc.getElementById('card-count').textContent.indexOf('2 cards'), 0);
+  assert.equal(doc.getElementById('card-count').textContent.indexOf(names.length + ' cards'), 0);
   // Nobody's URL may be inherited from a fixture: each is derived from this origin.
-  const urls = rows.map(r => r.querySelector('.url-value').textContent);
-  assert.deepEqual(urls, [ORIGIN + '/c/meera9/', ORIGIN + '/c/rahul123/'], urls.join(' | '));
+  // Compared as a set — which order the index lists cards in is not what this guards.
+  const urls = rows.map(r => r.querySelector('.url-value').textContent).sort();
+  assert.deepEqual(urls, names.map(u => ORIGIN + '/c/' + u + '/').sort(), urls.join(' | '));
 });
 
 test('generated /c/ directory page lists every profile', async () => {
@@ -1618,29 +1638,109 @@ test('generated /c/ directory page lists every profile', async () => {
   });
 });
 
-test('examples gallery: every profile offers all four tier scenarios', { skip: NO_JSDOM }, async () => {
+test('examples gallery: one share link per demo profile, and no scenario list', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('examples/index.html', { settleMs: 900 });
   assert.deepEqual(errors, [], errors.join('\n'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8'));
   const panels = Array.from(doc.querySelectorAll('#examples .panel'));
-  assert.equal(panels.length, 2, 'both fixture profiles');
+  assert.equal(panels.length, manifest.profiles.length, 'one panel per fixture profile');
 
   panels.forEach(panel => {
     const username = panel.getAttribute('data-username');
-    const hrefs = Array.from(panel.querySelectorAll('.example-scenarios a'))
-      .map(a => a.getAttribute('href'));
-    assert.equal(hrefs.length, 4, username + ' should offer four scenarios, got ' + hrefs.length);
-    // All four are the SAME page with different parameters — that is the thesis.
-    hrefs.forEach(h => assert.match(h, /profile\/\?u=/, h));
-    assert.ok(hrefs.some(h => !/[?&](t|viewer)=/.test(h)), 'a plain public view');
-    assert.ok(hrefs.some(h => /[?&]t=temp_/.test(h)), 'a live temporary token');
-    assert.ok(hrefs.some(h => /[?&]t=temp_[^&]*expired/.test(h) || h.includes('temp_demo_expired')),
-      'an expired token');
-    assert.ok(hrefs.some(h => /[?&]viewer=/.test(h)), 'an approved follower');
-    // The URL shown must be derived from this deployment, not from a fixture.
-    assert.match(panel.querySelector('code').textContent,
-      new RegExp('^' + ORIGIN.replace(/[:/]/g, '\\$&') + '/c/' + username + '/$'));
+    const share = panel.querySelector('.example-share');
+    assert.ok(share, username + ' should offer its link');
+    // The URL, as text, plus exactly two things to do with it: copy it, open it.
+    assert.match(share.querySelector('.url-value').textContent,
+      new RegExp('^' + ORIGIN.replace(/[:/]/g, '\\$&') + '/c/' + username + '/$'),
+      'the shown URL must be derived from this deployment, not copied from a fixture');
+    assert.equal(share.querySelectorAll('button').length, 1, username + ': one copy button');
+    const open = share.querySelector('a');
+    assert.match(open.getAttribute('href'), /profile\/\?u=/, 'open goes to the real renderer');
+    assert.match(open.getAttribute('href'), /[?&]demo=1/,
+      'and carries the flag that points it at examples/');
   });
 
-  // The page must stay honest that a static deployment does not enforce anything.
+  // The four-tier comparison the gallery used to lead with is gone, and the page stays
+  // honest about what a static deployment can and cannot enforce.
+  assert.equal(doc.querySelector('.example-scenarios'), null);
+  assert.ok(!/stranger scans|four scenarios/i.test(doc.body.textContent), doc.body.textContent.slice(0, 200));
   assert.match(doc.body.textContent, /not enforcement|demonstrations/i);
+});
+
+// ---------------------------------------------------------------------------
+// Themes: every demo wears a different one, and the page follows the card
+// ---------------------------------------------------------------------------
+
+test('every demo profile wears a different built-in theme', () => {
+  // The demos are the gallery of looks, so two profiles sharing a theme means one
+  // look nobody sees. Read from the same JSON the pages read, rather than from a list
+  // of names in this file that would go stale the moment a theme is added.
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8'));
+  assert.ok(manifest.profiles.length >= 4, 'expected several fixtures, got ' + manifest.profiles.length);
+
+  const seen = new Map();
+  manifest.profiles.forEach(username => {
+    const p = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', username + '.json'), 'utf8'));
+    const id = p.card_settings && p.card_settings.template_id;
+    assert.ok(id, username + ' must pick a template');
+    assert.ok(TPL.TEMPLATES.some(t => t.id === id),
+      username + ' uses ' + id + ', which is not a built-in template');
+    assert.ok(p.profile_settings && p.profile_settings.layout,
+      username + ' should also set profile_settings, so the page matches the card');
+    seen.set(id, (seen.get(id) || []).concat(username));
+  });
+  seen.forEach((users, id) => {
+    assert.equal(users.length, 1, id + ' is the theme of ' + users.join(', ') + ' — one demo each');
+  });
+});
+
+test('a theme paints the profile page and the card from one palette', { skip: NO_JSDOM }, async () => {
+  // The promise in docs/TEMPLATES.md: the page a link opens is not a second design
+  // somebody has to keep in step. Two demos with two themes must come out looking
+  // different in the same way their cards do.
+  const rahul = await loadPage('profile/index.html',
+    { search: '?u=rahul123', profileDir: '../examples/', settleMs: 900 });
+  const sana = await loadPage('profile/index.html',
+    { search: '?u=sana-eats', profileDir: '../examples/', settleMs: 900 });
+  assert.deepEqual(rahul.errors, [], rahul.errors.join('\n'));
+  assert.deepEqual(sana.errors, [], sana.errors.join('\n'));
+
+  const vars = (doc) => ['--bg', '--accent', '--text'].map(v => doc.documentElement.style.getPropertyValue(v));
+  const expected = (username) => {
+    const p = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', username + '.json'), 'utf8'));
+    const t = TPL.get(p.card_settings.template_id);
+    return [p.profile_settings.page_color, t.front.accent, t.front.nameColor];
+  };
+  assert.deepEqual(vars(rahul.doc), expected('rahul123'), 'the dark demo paints dark');
+  assert.deepEqual(vars(sana.doc), expected('sana-eats'), 'the clay demo paints clay');
+  assert.notDeepEqual(vars(rahul.doc), vars(sana.doc), 'and the two demos look different');
+
+  // No page background image means no light veil: a dark theme with pale text would
+  // otherwise be washed out by the legibility layer that exists for photos.
+  assert.match(rahul.doc.documentElement.style.getPropertyValue('--profile-page-veil'), /transparent/);
+  assert.equal(rahul.doc.documentElement.style.getPropertyValue('--profile-page-image'), 'none');
+});
+
+test('a pale or pitch-black accent still gets a legible button', { skip: NO_JSDOM }, async () => {
+  // The share block's Copy button is filled with the theme's accent. Dark ink on a
+  // dark accent — Signal's #000000, Paper's #1a1a2e — is an invisible button, so the
+  // page publishes --accent-fg for whatever sits on the accent.
+  const inkOf = (username) => {
+    const p = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', username + '.json'), 'utf8'));
+    const accent = TPL.get(p.card_settings.template_id).front.accent;
+    return TPL.isLight(accent) ? '#1a1a12' : '#ffffff';
+  };
+  for (const username of ['kabir-fit', 'meera9', 'rahul123', 'ananya-design']) {
+    const { doc } = await loadPage('profile/index.html',
+      { search: '?u=' + username, profileDir: '../examples/', settleMs: 900 });
+    assert.equal(doc.documentElement.style.getPropertyValue('--accent-fg'), inkOf(username),
+      username + ' should paint its button ink opposite to its accent');
+  }
+  // And the stylesheet must actually consume it, with the old hard-coded ink as the
+  // fallback so pages that never set the variable are unchanged.
+  const css = fs.readFileSync(path.join(ROOT, 'assets/styles.css'), 'utf8');
+  assert.ok(/\.share-block \.btn \{[^}]*--btn-fg: var\(--accent-fg, #1a1a12\)/.test(css),
+    'the share block must read --accent-fg');
+  assert.ok(/\.btn-accent \{[^}]*--btn-fg: var\(--accent-fg, #1a1a12\)/.test(css),
+    'so must the accent button utility');
 });

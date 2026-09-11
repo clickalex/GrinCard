@@ -71,10 +71,10 @@
           <strong>Pick a look and edit your links.</strong>
           <span class="step-body">
             The <a href="dashboard/">dashboard</a> has a visual template picker and a form for your
-            links, so you can see the tiers behave and then use <em>Copy</em> to take the finished
-            JSON back to your repo. Hand-editing works too. Public links show to anyone;
-            <code>"visibility": "followers_only"</code> ones only appear for a temporary token or an
-            approved follower.
+            links, so you can watch the card change as you type, then use <em>Copy</em> to take the
+            finished JSON back to your repo. Hand-editing works too. Public links show to anyone;
+            <code>"visibility": "followers_only"</code> ones only appear on a link you send to
+            somebody yourself.
           </span>
         </li>
         <li>
@@ -113,36 +113,18 @@
 
     <section class="panel">
       <div class="panel-head">
-        <h2>How the tiers behave</h2>
-        <span class="hint">Same URL, different visitor.</span>
-      </div>
-      <div class="grid grid-2" id="tier-explainer">
-        <div class="tier-card">
-          <h3>Anyone with the card</h3>
-          <p class="small muted">Scans the printed QR → sees public links only. Up to
-            <strong id="limit-public">5</strong> on the free tier.</p>
-        </div>
-        <div class="tier-card">
-          <h3>Someone you sent a temporary link</h3>
-          <p class="small muted">Opens <code>?t=temp_…</code> → public links plus the one private link
-            that token unlocks, until it expires.</p>
-        </div>
-        <div class="tier-card">
-          <h3>An approved follower</h3>
-          <p class="small muted">Signed in and approved → every link, including private ones.</p>
-        </div>
-        <div class="tier-card">
-          <h3>Everyone else</h3>
-          <p class="small muted">Expired token, revoked follower, or no session → back to public only.
-            Never a dead end.</p>
+        <h2>Themes</h2>
+        <span class="hint">One link, one look at a time.</span>
+        <div class="panel-actions">
+          <a class="btn btn-sm btn-ghost" href="templates/">Template gallery</a>
+          <a class="btn btn-sm btn-ghost" href="examples/">Demo profiles</a>
         </div>
       </div>
-      <p class="tiny muted">
-        Want to see it rather than read it? <a href="examples/">Open the example profiles</a> —
-        they ship with live, expired and follower scenarios wired up.
-        In this static version the tier decision runs in the visitor's browser, so it demonstrates the
-        behaviour without enforcing it; <a href="docs/ARCHITECTURE.md">ARCHITECTURE.md</a> describes the
-        server-side version, which uses the same <code>resolveAccess()</code>.
+      <div class="grid grid-2" id="theme-strip"></div>
+      <p class="tiny muted mb0">
+        Pick one in the <a href="card-builder/">card builder</a> or the
+        <a href="dashboard/">dashboard</a> — the same palette paints the printed card and the page the
+        link opens, and your URL never changes when you change your mind.
       </p>
     </section>
 

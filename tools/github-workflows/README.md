@@ -12,6 +12,16 @@ node tools/install-workflows.js --force  # overwrite whatever is there
 Or `npm run workflows:install`. `ci.yml` runs the `--check` form on every push, so editing a
 canonical copy and forgetting to re-install it fails CI rather than quietly running the old one.
 
+## Why these exact file names
+
+`--check` compares the two directories **by filename**, so a canonical copy only counts as
+installed when it lands under the same name. `pages-deploy.yml` matches the name already installed
+upstream; the shorter `pages.yml` this folder used to carry was never installed, and cannot be by
+the token that maintains this repository (see the rejection below). If someone with the `workflows`
+permission prefers `pages.yml`, rename it under `.github/workflows/` and rename the copy here in
+the same commit. Nothing else depends on the name: Pages uses `build_type: workflow`, which picks
+the workflow holding the `deploy-pages` job rather than a path.
+
 ## Why not just commit them to `.github/workflows/`
 
 GitHub runs workflows only from `.github/workflows/`. But a GitHub App installation token cannot
@@ -51,7 +61,7 @@ After that this folder is redundant and can be deleted. It exists to get the wor
 | Workflows installed | `node tools/install-workflows.js --check` | the drift this folder could otherwise develop |
 | Clean tree | `git diff --exit-code` | a build step that is not idempotent |
 
-**`pages.yml`** — on a push to the default branch: runs the build so manifests and `/c/<username>/`
+**`pages-deploy.yml`** — on a push to the default branch: runs the build so manifests and `/c/<username>/`
 stubs are regenerated from whatever is in `profile-data/`, strips the dev-only directories
 (`tests`, `tools`, `.github`, `node_modules`, `package.json`, …) so they are not published, then
 deploys to GitHub Pages.

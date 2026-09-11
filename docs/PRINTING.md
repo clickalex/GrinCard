@@ -89,7 +89,7 @@ Bleed is artwork that extends past the trim line so that a small cutting error s
 artwork instead of white paper.
 
 - **Turn it on** for professional printing, dark backgrounds, or any design where colour runs
-  to the edge. All three templates here have full-bleed backgrounds, so in practice: always on
+  to the edge. Every built-in theme paints the whole face of the card, so in practice: always on
   for a print shop.
 - **Turn it off** for home/office printers, for a proof, or if the shop says "we do not need
   bleed" (some digital presses trim from the file edge).

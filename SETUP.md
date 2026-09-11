@@ -61,8 +61,8 @@ listed on the home page. (Step 4's Actions route does this for you on every push
 - **Deploy from a branch** — choose branch `main`, folder `/ (root)`, **Save**. Nothing else to
   do; your site is live within a minute or two.
 - **GitHub Actions** — first create the workflow: **Add file → Create new file**, name it
-  `.github/workflows/pages.yml`, paste in the contents of
-  [`tools/github-workflows/pages.yml`](tools/github-workflows/pages.yml), commit, then select
+  `.github/workflows/pages-deploy.yml`, paste in the contents of
+  [`tools/github-workflows/pages-deploy.yml`](tools/github-workflows/pages-deploy.yml), commit, then select
   **GitHub Actions** as the source. This pre-renders every `/c/<username>/` page and refreshes
   the cards list on each push, so you never touch `index.json` again.
 
@@ -158,7 +158,7 @@ the same data, preview live, and export the JSON file to commit.
 
 ### Recommended — deploy with the included workflow
 
-Two workflows ship with this repository: `pages.yml` regenerates your links on every push and
+Two workflows ship with this repository: `pages-deploy.yml` regenerates your links on every push and
 publishes the result, and `ci.yml` validates profiles, templates and internal links.
 
 **They are not in `.github/workflows/` when you clone.** GitHub refuses to let an app token

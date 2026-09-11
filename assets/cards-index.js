@@ -214,12 +214,48 @@
     if (missing && missing.length) target.appendChild(staleNotice(missing));
   }
 
+  /**
+   * The themes this deployment can offer, read straight from the template registry
+   * so a contributed template shows up here without anyone editing the page.
+   */
+  function renderThemes() {
+    var strip = document.getElementById('theme-strip');
+    if (!strip) return;
+    var draw = function () {
+      strip.innerHTML = '';
+      TPL.all().forEach(function (t) {
+        var bg = t.front.background;
+        var swatch = bg.type === 'gradient'
+          ? 'background:linear-gradient(135deg,' + bg.from + ' 0%,' + bg.to + ' 58%,' +
+            t.front.accent + ' 58%,' + t.front.accent + ' 100%)'
+          : 'background:' + bg.color + ';border-color:' + t.front.accent;
+        strip.appendChild(el('div', { class: 'theme-card' }, [
+          el('div', { class: 'theme-swatch', style: swatch, 'aria-hidden': 'true' }),
+          el('h3', { text: t.name }),
+          el('p', { class: 'small muted', text: t.description }),
+          el('p', { class: 'tiny muted mb0' }, [
+            el('a', { href: 'templates/', text: 'Preview both sides' })
+          ])
+        ]));
+      });
+      if (!strip.children.length) {
+        strip.appendChild(el('p', { class: 'tiny muted', text: 'No templates registered.' }));
+      }
+    };
+    // Community templates load asynchronously; render after them so a contributed
+    // theme is not silently missing from the list. loadCommunity never rejects.
+    if (typeof TPL.loadCommunity === 'function') {
+      TPL.loadCommunity(Store.rootRelative('card-templates/community/')).then(draw, draw);
+    } else {
+      draw();
+    }
+  }
+
   function start() {
+    renderThemes();
     var target = document.getElementById('cards');
     var count = document.getElementById('card-count');
     var firstRun = document.getElementById('first-run');
-    var limitEl = document.getElementById('limit-public');
-    if (limitEl) limitEl.textContent = String(Access.LIMITS.maxPublicLinks);
 
     Store.listProfilesDetailed()
       .then(function (result) {

@@ -1,20 +1,20 @@
 /*!
- * examples/gallery.js — renders the fixture profiles with a link for each tier.
+ * examples/gallery.js — renders the fixture profiles, one share link each.
  *
- * The point of this page is that the four links in every row are the SAME URL with
- * different query parameters, which is the whole thesis of the project: print one
- * permanent code, and let the arrival decide what is shown.
+ * Every row shows the SAME permanent URL that the printed QR encodes, with a copy
+ * button beside it: one card, one link, and the theme is the only thing that varies
+ * from profile to profile. Each fixture wears a different card template so the page
+ * doubles as the showcase for the built-in themes.
  *
- * Everything is read from examples/*.json — including the tokens, so the temporary
- * and expired scenarios use real fixture values rather than hardcoded strings that
- * could drift out of sync with the data (and with the tests, which read the same
- * files).
+ * Everything is read from examples/*.json — including the theme and the colours, so
+ * the swatches here cannot drift out of sync with what the profile page paints.
  */
 (function () {
   'use strict';
 
   var Store = window.Store;
   var Access = window.AccessRules;
+  var TPL = window.CardTemplates;
 
   function $(id) { return document.getElementById(id); }
 
@@ -38,114 +38,106 @@
 
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
-  /** The profile page, with whatever query parameters a scenario needs. */
-  function scenarioHref(username, extra) {
-    var q = new URLSearchParams();
-    q.set('u', username);
-    q.set('demo', '1');           // shows the tier switcher on the profile page
-    Object.keys(extra || {}).forEach(function (k) { if (extra[k]) q.set(k, extra[k]); });
-    return Store.rootRelative('profile/?') + q.toString();
+  /**
+   * Clipboard with a fallback, because file:// and plain-http deployments block the
+   * async API. Same behaviour as the copy button on the site root.
+   */
+  function copy(text, button) {
+    function done(ok) {
+      if (!button) return;
+      var label = button.textContent;
+      button.textContent = ok ? 'Copied' : 'Press ⌘C';
+      button.disabled = true;
+      setTimeout(function () { button.textContent = label; button.disabled = false; }, 1400);
+    }
+    function legacy() {
+      try {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(area);
+        return ok;
+      } catch (e) { return false; }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacy()); });
+    } else {
+      done(legacy());
+    }
   }
 
   /**
-   * Pick the fixtures that make each scenario meaningful: one live token, one
-   * expired, and one approved follower — for THIS profile, from examples/tokens.json.
+   * The profile page for a fixture. `demo=1` is not decoration: this page reads
+   * examples/ through <body data-profile-dir>, but navigating drops that attribute
+   * with the page, so the destination needs the flag to know which directory to
+   * load from. Without it every link here would render "No profile here".
    */
-  function scenarioData(registry, username) {
-    var tokens = (registry && registry.tokens) || [];
-    var followers = (registry && registry.followers) || [];
-    var mine = tokens.filter(function (t) { return t.profile_username === username; });
-
-    // evaluateToken takes the token VALUE, the profile username and the registry —
-    // the same call the profile page makes when a visitor arrives with ?t=. Using
-    // the real function (rather than re-implementing expiry here) is what keeps this
-    // gallery honest: if the rules change, these links change with them.
-    function verdict(token) {
-      return Access.evaluateToken(token.token_value, username, registry);
-    }
-
-    var live = mine.filter(function (t) { return verdict(t).valid; })[0];
-
-    // Specifically a token that WAS valid and is no longer — not one that is
-    // malformed or belongs to someone else. The scenario is labelled "after it
-    // expired", so it has to actually be that.
-    var expired = mine.filter(function (t) {
-      var v = verdict(t);
-      return !v.valid && (v.reason === 'expired' || v.reason === 'exhausted');
-    })[0];
-    var approved = followers.filter(function (f) {
-      return f.profile_username === username && f.status === 'approved';
-    })[0];
-
-    return {
-      live: live ? live.token_value : null,
-      expired: expired ? expired.token_value : null,
-      follower: approved ? approved.follower_id : null
-    };
+  function profileHref(username) {
+    var q = new URLSearchParams();
+    q.set('u', username);
+    q.set('demo', '1');
+    return Store.rootRelative('profile/?') + q.toString();
   }
 
-  function scenarioRow(username, data) {
-    var items = [
-      {
-        label: 'Stranger scans the card',
-        href: scenarioHref(username),
-        note: 'public links only'
-      },
-      {
-        label: 'Temporary link you sent',
-        href: data.live ? scenarioHref(username, { t: data.live }) : null,
-        note: data.live ? 'public + one private link' : 'no live token in the fixtures'
-      },
-      {
-        label: 'Same link, after it expired',
-        href: data.expired ? scenarioHref(username, { t: data.expired }) : null,
-        note: data.expired ? 'degrades to public, never 404' : 'no expired token in the fixtures'
-      },
-      {
-        label: 'Approved follower, signed in',
-        href: data.follower ? scenarioHref(username, { viewer: data.follower }) : null,
-        note: data.follower ? 'every link, including private' : 'no approved follower in the fixtures'
-      }
-    ];
-
-    return el('ul', { class: 'scenario-list example-scenarios' }, items.map(function (item) {
-      return el('li', {}, [
-        item.href
-          ? el('a', { href: item.href }, [
-              el('span', { class: 'scenario-label', text: item.label }),
-              el('span', { class: 'scenario-note tiny muted', text: item.note })
-            ])
-          : el('span', { class: 'scenario-label muted', title: item.note }, [
-              document.createTextNode(item.label + ' — ' + item.note)
-            ])
-      ]);
-    }));
+  /** The template this demo is themed with, and its own colours. */
+  function themeTag(profile) {
+    var template = TPL.get(profile.card_settings && profile.card_settings.template_id);
+    var bg = template.front.background;
+    var swatch = bg.type === 'gradient'
+      ? 'background:linear-gradient(135deg,' + bg.from + ',' + bg.to + ');--dot:' + template.front.accent
+      : 'background:' + bg.color + ';--dot:' + template.front.accent;
+    return el('span', { class: 'theme-tag' }, [
+      el('span', { class: 'swatch-dot', style: swatch, 'aria-hidden': 'true' }),
+      document.createTextNode(template.name + ' · ' + template.id)
+    ]);
   }
 
-  function profilePanel(summary, profile, registry) {
+  /**
+   * One row: the permanent URL as selectable text, a button that copies it, and a
+   * link that opens the card. That is the whole sharing story, for a demo exactly
+   * as it is for a real card.
+   */
+  function shareRow(username, url) {
+    var button = el('button', { class: 'btn btn-sm', type: 'button', text: 'Copy link' });
+    button.addEventListener('click', function () { copy(url, button); });
+    return el('div', { class: 'example-share' }, [
+      el('div', { class: 'url-row' }, [
+        el('code', { class: 'url-value', text: url }),
+        button,
+        el('a', {
+          class: 'btn btn-sm btn-ghost', href: profileHref(username),
+          target: '_blank', rel: 'noopener', text: 'Open card'
+        })
+      ])
+    ]);
+  }
+
+  function profilePanel(summary, profile) {
     var links = profile.links || [];
     var pub = links.filter(function (l) { return l.visibility === 'public'; });
     var priv = links.length - pub.length;
     var url = Store.profileUrlFor(profile.username, profile);
-    var data = scenarioData(registry, profile.username);
 
     return el('section', { class: 'panel', 'data-username': profile.username }, [
       el('div', { class: 'panel-head' }, [
         el('h2', { text: profile.display_name || profile.username }),
         el('span', { class: 'hint', text: profile.designation || '' }),
+        themeTag(profile),
         el('span', { class: 'badge badge-public', text: pub.length + ' public' }),
         priv ? el('span', { class: 'badge badge-private', text: priv + ' private' }) : null
       ]),
-      el('p', { class: 'small muted' }, [
-        document.createTextNode('Permanent URL: '),
-        el('code', { text: url })
+      shareRow(profile.username, url),
+      el('p', { class: 'tiny muted mb0' }, [
+        document.createTextNode(priv
+          ? priv + (priv === 1 ? ' link is' : ' links are') + ' private and appear only on a link the owner sends.'
+          : 'Every link here is public.')
       ]),
-      scenarioRow(profile.username, data),
       el('div', { class: 'btn-row mt1' }, [
-        // Both carry demo=1. Navigating to another page loses this one's
-        // <body data-profile-dir>, and without the flag the destination would read
-        // profile-data/ — where these fixtures deliberately do not live — and show
-        // an empty form instead of the person you clicked.
         el('a', {
           class: 'btn btn-sm btn-ghost',
           href: Store.rootRelative('card-builder/?demo=1&u=' + encodeURIComponent(profile.username)),
@@ -160,11 +152,8 @@
     ]);
   }
 
-  function start() {
-    var target = $('examples');
-    var limit = $('limit-public');
-    if (limit) limit.textContent = String(Access.LIMITS.maxPublicLinks);
-
+  /** Load every fixture profile and render one panel per person. */
+  function renderGallery(target) {
     Store.listProfiles().then(function (summaries) {
       if (!summaries.length) {
         clear(target);
@@ -176,16 +165,15 @@
         return;
       }
       return Promise.all(summaries.map(function (s) {
-        return Promise.all([Store.loadProfile(s.username), Store.loadRegistry(s.username)])
-          .then(function (pair) {
-            return { summary: s, profile: pair[0], registry: pair[1] };
-          });
+        return Store.loadProfile(s.username).then(function (profile) {
+          return { summary: s, profile: profile };
+        });
       })).then(function (rows) {
         clear(target);
         rows.forEach(function (row) {
           if (!row.profile) return;
           var checked = Access.validateProfile(row.profile);
-          target.appendChild(profilePanel(row.summary, checked.ok ? checked.profile : row.profile, row.registry));
+          target.appendChild(profilePanel(row.summary, checked.ok ? checked.profile : row.profile));
         });
       });
     }).catch(function (err) {
@@ -197,6 +185,20 @@
           '(<code>python3 -m http.server</code>) rather than opened as a file.' })
       ]));
     });
+  }
+
+  function start() {
+    var target = $('examples');
+    var limit = $('limit-public');
+    if (limit) limit.textContent = String(Access.LIMITS.maxPublicLinks);
+
+    // Contributed templates are fetched at runtime, so a demo themed with one shows its
+    // real name and swatch instead of falling back to template-1. loadCommunity never
+    // rejects: a missing folder just means no extra templates.
+    var ready = (TPL && typeof TPL.loadCommunity === 'function')
+      ? TPL.loadCommunity(Store.rootRelative('card-templates/community/'))
+      : Promise.resolve([]);
+    ready.then(function () { renderGallery(target); }, function () { renderGallery(target); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

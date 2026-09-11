@@ -1,9 +1,9 @@
 /*!
  * profile.js — renders the public profile page: the thing a QR code opens.
  *
- * The URL is the API. What this page shows comes from three inputs — whose
- * profile, a temporary token, and the viewer identity — and `profile/boot.js`
- * resolves the first of those from whichever host is running us:
+ * There is one page and one link to share. What a visitor sees comes from three
+ * inputs — whose profile, a temporary token, and the viewer identity — and
+ * `profile/boot.js` resolves the first of those from whichever host is running us:
  *
  *   /profile/?u=rahul   owner preview and ?u= deep links
  *   /c/rahul/           the canonical printed URL (a generated stub)
@@ -65,28 +65,56 @@
   function applyTheme(profile) {
     var vars = TPL.toCssVars(TPL.get(profile.card_settings && profile.card_settings.template_id), profile);
     var page = profile.profile_settings || {};
+    var hasPageImage = !!page.page_background_image;
     vars['--profile-page-color'] = page.page_color || vars['--bg'] || '#f6f6f4';
     vars['--profile-link-color'] = page.link_color || vars['--surface'] || '#ffffff';
-    vars['--profile-page-image'] = page.page_background_image ? 'url("' + String(page.page_background_image).replace(/"/g, '%22') + '")' : 'none';
+    vars['--profile-page-image'] = hasPageImage ? 'url("' + String(page.page_background_image).replace(/"/g, '%22') + '")' : 'none';
+    // The light veil exists to keep type readable over a photo. With no photo it must
+    // not paint at all, or a dark theme's pale page colour is washed out under it and
+    // its light text disappears.
+    vars['--profile-page-veil'] = hasPageImage
+      ? 'linear-gradient(rgba(246,246,244,.78), rgba(246,246,244,.78))'
+      : 'linear-gradient(transparent, transparent)';
+    // Anything painted in the accent — the Copy link button, for one — needs type in the
+    // opposite lightness. Signal and Paper accent on near-black, so hardcoding dark ink
+    // there would be invisible ink on an invisible button.
+    vars['--accent-fg'] = TPL.isLight(vars['--accent']) ? '#1a1a12' : '#ffffff';
     Object.keys(vars).forEach(function (name) {
       document.documentElement.style.setProperty(name, vars[name]);
     });
   }
 
-  function tierLabel(tier) {
-    return {
-      public: 'Public view',
-      temporary: 'Temporary access',
-      follower: 'Approved follower'
-    }[tier] || 'Public view';
-  }
-
-  function tierExplainer(tier) {
-    return {
-      public: 'Anyone who scans the card sees this. Private links stay hidden.',
-      temporary: 'This link carries a temporary token, so one private link is unlocked until it expires.',
-      follower: 'You are signed in and the owner approved you, so every link is visible.'
-    }[tier];
+  /**
+   * Clipboard with a fallback, so the copy button works on a plain-http deploy and
+   * from file:// too — the same helper assets/cards-index.js uses.
+   */
+  function copyText(text, button) {
+    function done(ok) {
+      if (!button) return;
+      var label = button.textContent;
+      button.textContent = ok ? 'Copied' : 'Press ⌘C';
+      button.disabled = true;
+      setTimeout(function () { button.textContent = label; button.disabled = false; }, 1400);
+    }
+    function legacy() {
+      try {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(area);
+        return ok;
+      } catch (e) { return false; }
+    }
+    if (window.navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacy()); });
+    } else {
+      done(legacy());
+    }
   }
 
   function photoNode(profile) {
@@ -138,47 +166,24 @@
   }
 
   /**
-   * The four-visitor switcher. It is a teaching aid, so it renders only in a demo
-   * context (a page pointed at examples/, or ?demo=1). On someone's real card it
-   * would be noise — and it would advertise that private links exist.
+   * The one link this page offers: the card's permanent URL, shown as text so it can
+   * be selected, with a button that copies it. A visitor can forward it; the owner can
+   * paste it into a bio. Nothing here is demo-only, because a shared card is the real
+   * product — there is no second view of it to compare against.
    */
-  function scenarioLinks(username, params, tokenInfo) {
-    var base = location.pathname;
-    function href(extra) {
-      var q = new URLSearchParams();
-      q.set('u', username);
-      q.set('demo', '1');
-      Object.keys(extra || {}).forEach(function (k) { if (extra[k]) q.set(k, extra[k]); });
-      return base + '?' + q.toString();
-    }
-    var current = params.t ? (tokenInfo && tokenInfo.valid ? 'temp' : 'expired')
-      : (params.viewer ? 'follower' : 'public');
+  function shareBlock(canonical) {
+    var button = el('button', { class: 'btn btn-sm', type: 'button', text: 'Copy link' });
+    button.addEventListener('click', function () { copyText(canonical, button); });
 
-    var items = [
-      { key: 'public', what: 'Stranger scans the printed card', extra: {} },
-      { key: 'temp', what: 'Owner shared a temporary link', extra: { t: 'temp_demo_live' } },
-      { key: 'expired', what: 'Same temporary link, after it expired', extra: { t: 'temp_demo_expired' } },
-      { key: 'follower', what: 'Approved follower, signed in', extra: { viewer: 'user_priya' } }
-    ];
-
-    return el('div', { class: 'scenario-switch no-print' }, [
-      el('h2', { text: 'The same URL, four visitors' }),
-      el('ul', { class: 'scenario-list' }, items.map(function (item) {
-        return el('li', {}, [
-          el('a', {
-            href: href(item.extra),
-            'aria-current': item.key === current ? 'true' : null
-          }, [
-            el('span', { text: item.what })
-          ])
-        ]);
-      })),
-      el('p', {
-        class: 'tiny muted',
-        html: 'In V1 these links simulate the tiers in the browser. The private URLs are already in the JSON ' +
-          'your browser fetched, so this demonstrates the UX, not real access control — see ' +
-          '<a href="' + link('docs/ARCHITECTURE.md') + '">ARCHITECTURE.md</a>.'
-      })
+    return el('section', { class: 'share-block no-print', 'aria-labelledby': 'share-title' }, [
+      el('h2', { id: 'share-title', text: 'Share this card' }),
+      el('div', { class: 'url-row' }, [
+        el('code', { class: 'url-value share-url', text: canonical }),
+        button,
+        el('a', { class: 'btn btn-sm btn-ghost', href: canonical, text: 'Open' })
+      ]),
+      el('p', { class: 'tiny muted', text:
+        'This link is permanent. Editing the profile changes what it shows, never the address.' })
     ]);
   }
 
@@ -206,7 +211,7 @@
     ]));
   }
 
-  function render(profile, access, params) {
+  function render(profile, access) {
     var root = root_();
     root.innerHTML = '';
     applyTheme(profile);
@@ -220,11 +225,6 @@
       el('h1', { class: 'profile-name', text: profile.display_name }),
       profile.designation ? el('p', { class: 'profile-role', text: profile.designation }) : null,
       profile.tagline ? el('p', { class: 'profile-tagline', text: profile.tagline }) : null
-    ]));
-
-    root.appendChild(el('div', { class: 'tier-banner no-print' }, [
-      el('span', { class: 'badge badge-tier', text: tierLabel(access.tier) }),
-      el('span', { text: tierExplainer(access.tier) })
     ]));
 
     (access.notices || []).forEach(function (notice) {
@@ -243,15 +243,14 @@
     if (access.hiddenCount > 0) {
       root.appendChild(el('p', { class: 'tiny center mt2 no-print', text:
         access.hiddenCount + (access.hiddenCount === 1 ? ' link is' : ' links are') +
-        ' private. Ask ' + profile.display_name.split(' ')[0] + ' for a temporary link or for approval.' }));
-    }
-
-    if (Boot && Boot.demo) {
-      root.appendChild(scenarioLinks(profile.username, params, access.token));
+        ' private. ' + profile.display_name.split(' ')[0] +
+        ' shares a link to those when someone needs them.' }));
     }
 
     // The canonical URL is derived, never typed: a fork's cards point at the fork.
     var canonical = Store.profileUrlFor(profile.username, profile);
+    root.appendChild(shareBlock(canonical));
+
     var existingCanonical = document.querySelector('link[rel="canonical"]');
     if (existingCanonical) existingCanonical.setAttribute('href', canonical);
     else {
@@ -349,7 +348,7 @@
         var checked = Access.validateProfile(profile);
         var access = Access.resolveAccess(checked.ok ? checked.profile : profile,
           { token: params.t || null, viewerId: viewerId }, registry);
-        render(checked.ok ? checked.profile : profile, access, params);
+        render(checked.ok ? checked.profile : profile, access);
       })
       .catch(function (err) {
         if (gen !== generation) return;

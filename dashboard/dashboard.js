@@ -638,7 +638,7 @@
     $('preview-front').src = Card.toDataURL(card, 'front', { pxPerMm: 6 });
     $('preview-back').src = Card.toDataURL(card, 'back', { pxPerMm: 6 });
     state.card = card;
-    renderVisitorLinks(profile, url);
+    fillQrToolLink(profile);
   }, 180);
 
   function currentCard() {
@@ -719,54 +719,8 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Visitor simulation
+  // Sharing the card
   // ---------------------------------------------------------------------------
-
-  function renderVisitorLinks(profile, url) {
-    var box = $('visitor-links');
-    clear(box);
-    var registry = state.registry || { tokens: [], followers: [] };
-    // Scenarios are built on the canonical /c/<username>/ URL, the one that gets printed.
-    var profilePage = Store.rootRelative('c/' + encodeURIComponent(profile.username) + '/');
-
-    var liveToken = (registry.tokens || []).filter(function (t) {
-      return !t.expires_at || Date.parse(t.expires_at) > Date.now();
-    })[0];
-
-    var scenarios = [
-      { key: 'public', label: 'Stranger', params: {} },
-      { key: 'temp', label: 'Temporary link', params: liveToken ? { t: liveToken.token_value } : null },
-      { key: 'follower', label: 'Approved follower', params: { viewer: firstApprovedFollower(registry) } }
-    ];
-
-    scenarios.forEach(function (scenario) {
-      var params = scenario.params;
-      var enabled = params && Object.keys(params).every(function (k) { return params[k]; });
-      var access = Access.resolveAccess(profile, {
-        token: enabled ? params.t : null,
-        viewerId: enabled ? params.viewer : null
-      }, registry);
-
-      var qs = new URLSearchParams({ u: profile.username });
-      if (enabled) Object.keys(params).forEach(function (k) { if (params[k]) qs.set(k, params[k]); });
-
-      box.appendChild(el('div', { class: 'row' }, [
-        el('div', { class: 'grow' }, [
-          el('div', { class: 'title', text: scenario.label }),
-          el('div', { class: 'sub', text: enabled
-            ? access.visibleLinks.length + ' links · ' + access.visibleLinks.map(function (l) { return l.label || l.url; }).join(', ')
-            : (scenario.key === 'temp' ? 'No active temporary link yet' : 'No approved follower yet') })
-        ]),
-        el('a', {
-          class: 'btn btn-ghost btn-sm', href: profilePage + '?' + qs.toString(),
-          target: '_blank', rel: 'noopener', text: 'Open',
-          'aria-disabled': enabled ? null : 'true'
-        })
-      ]));
-    });
-
-    fillQrToolLink(profile);
-  }
 
   /**
    * Point the QR generator at this card's URL. It accepts ?url= so you can go
@@ -778,11 +732,6 @@
     var url = profile.profile_url || defaultProfileUrl(profile.username);
     link.setAttribute('href',
       Store.pageRelative('../qr-generator/') + '?url=' + encodeURIComponent(url));
-  }
-
-  function firstApprovedFollower(registry) {
-    var found = (registry.followers || []).filter(function (f) { return f.status === 'approved'; })[0];
-    return found ? found.follower_id : null;
   }
 
   // ---------------------------------------------------------------------------
@@ -843,13 +792,13 @@
       el('div', { class: 'btn-row mt1' }, [
         el('button', { type: 'button', class: 'btn btn-sm', text: 'Copy link', onclick: function () { copy(url); } }),
         el('button', {
-          type: 'button', class: 'btn btn-ghost btn-sm', text: 'Open as visitor',
+          type: 'button', class: 'btn btn-ghost btn-sm', text: 'Open',
           onclick: function () { window.open(url, '_blank', 'noopener'); }
         })
       ])
     ]));
     renderTokenList();
-    renderVisitorLinks(strip(state.profile), profileUrlFor(state.profile));
+    fillQrToolLink(state.profile);
   }
 
   function revokeToken(tokenValue) {
@@ -858,7 +807,6 @@
     });
     Store.saveLocalRegistry(state.profile.username, state.registry);
     renderTokenList();
-    renderVisitorLinks(strip(state.profile), profileUrlFor(state.profile));
     alert('ok', 'Revoked. The URL now shows public links only.');
   }
 
@@ -956,7 +904,6 @@
     follower.approved_at = status === 'approved' ? new Date().toISOString() : null;
     Store.saveLocalRegistry(state.profile.username, state.registry);
     renderFollowerList();
-    renderVisitorLinks(strip(state.profile), profileUrlFor(state.profile));
     alert('ok', status === 'approved'
       ? 'Approved ' + escapeHtml(follower.follower_name || follower.follower_email || followerId) +
         '. They now see every followers-only link.'

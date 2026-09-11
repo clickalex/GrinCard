@@ -7,7 +7,7 @@
   "designation": "Product Engineer",
   "tagline": "Small tools, useful software and open source",
   "photo_url": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmMmIxMzQiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNkMTcxMWYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjEwMCIgeT0iMTMyIiBmb250LWZhbWlseT0iSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iODgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5SSzwvdGV4dD48L3N2Zz4=",
-  "theme": "template-1",
+  "theme": "template-5",
   "created_at": "2026-09-04T10:00:00Z",
   "links": [
     {
@@ -43,14 +43,16 @@
     }
   ],
   "card_settings": {
-    "template_id": "template-1",
+    "template_id": "template-5",
+    "primary_color": "#0b1020",
+    "accent_color": "#4ec98a",
     "show_photo": true,
     "size": "standard"
   },
   "profile_settings": {
-    "layout": "pinterest",
-    "link_shape": "rounded",
-    "page_color": "#f6f6f4",
-    "link_color": "#ffffff"
+    "layout": "stack",
+    "link_shape": "square",
+    "page_color": "#0b1020",
+    "link_color": "#131c31"
   }
 }

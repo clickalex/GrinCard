@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Example profiles — QR Link Card</title>
-<meta name="description" content="The fixture profiles that ship with QR Link Card, with live links for each access tier: stranger, temporary token, expired token, approved follower.">
+<meta name="description" content="The fixture profiles that ship with QR Link Card: six themes, six looks, one shareable link each.">
 <link rel="stylesheet" href="../assets/styles.css">
 </head>
 <!--
@@ -38,8 +38,8 @@
       <div>
         <h1>Example profiles</h1>
         <p class="muted small mb0">
-          Six fixture people, each with post-style link cards and wired to the four ways one URL can behave.
-          Open any scenario below and watch the same profile show a different set of links — that is the whole idea of the project.
+          Six fixture people, each themed with a different card template, each with one link to share.
+          Copy it or open the card — the address is permanent, and the JSON behind it is what changes.
         </p>
       </div>
       <div class="btn-row">
@@ -51,9 +51,9 @@
     <div class="notice notice-warn mt2">
       <strong>These are demonstrations, not enforcement.</strong>
       <p class="small mb0">
-        In this static version the tier decision runs in your browser, and the private URLs are in the
-        JSON your browser just fetched — so a determined visitor could read them. It proves the UX and
-        the data model; the server-side version in
+        A private link is hidden by the page, not by a server: on a static deployment the decision runs
+        in your browser, and the private URLs are in the JSON your browser just fetched — so a determined
+        visitor could read them. It proves the UX and the data model; the server-side version in
         <a href="../docs/ARCHITECTURE.md">ARCHITECTURE.md</a> enforces it with the same
         <code>resolveAccess()</code>. Never put a genuinely secret URL in a static profile.
       </p>
@@ -65,20 +65,33 @@
 
     <section class="panel mt2">
       <div class="panel-head">
-        <h2>What the four scenarios mean</h2>
+        <h2>What each demo shows</h2>
+        <span class="hint">One theme per profile.</span>
       </div>
       <dl class="kv">
-        <dt>Stranger</dt>
-        <dd>Scans the printed card. Public links only — up to
-          <strong id="limit-public">5</strong> on the free tier.</dd>
-        <dt>Temporary link</dt>
-        <dd>Got <code>?t=temp_…</code> from the owner. Public links plus the one private link that
-          token unlocks, until it expires or its use-count runs out.</dd>
-        <dt>Expired token</dt>
-        <dd>The same URL, later. It degrades to public — never a 404, never a leak.</dd>
-        <dt>Approved follower</dt>
-        <dd>Signed in and approved by the owner. Every link, including private ones.</dd>
+        <dt>Midnight <span class="muted">— rahul123</span></dt>
+        <dd>Deep navy gradient, warm accent, Pinterest grid. The default look, and the one the
+          printed card matches.</dd>
+        <dt>Paper <span class="muted">— meera9</span></dt>
+        <dd>Warm off-white, ink type, a green accent override for a shop front, and a classic
+          stacked list instead of a grid.</dd>
+        <dt>Signal <span class="muted">— kabir-fit</span></dt>
+        <dd>Black on white, maximum contrast, no colour ink, square link cards on square stock.</dd>
+        <dt>Bloom <span class="muted">— ananya-design</span></dt>
+        <dd>Blush gradient, centred serif name, pill-shaped cards. The <code>centered</code> layout
+          on a light background.</dd>
+        <dt>Terminal <span class="muted">— dev-builds</span></dt>
+        <dd>Ink-blue with phosphor green, square corners, a dark page — the palette comes from the
+          theme, not from a stylesheet.</dd>
+        <dt>Terra <span class="muted">— sana-eats</span></dt>
+        <dd>Clay and cream, serif name, postcard trim size. Suits a kitchen or a studio.</dd>
       </dl>
+      <p class="small mb0">
+        Up to <strong id="limit-public">5</strong> links are public on the free tier. A link marked
+        <code>"visibility": "followers_only"</code> stays off the page until the owner sends a link
+        carrying a token for it — the same permanent URL, one extra link, and it degrades back to
+        public once the token expires rather than showing a 404.
+      </p>
       <p class="tiny muted mb0">
         Fixture data lives in <code>examples/*.json</code> and is read by the test suite too, so what you
         see here is what the tests assert. Copy one of these files into

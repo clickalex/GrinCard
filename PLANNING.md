@@ -60,7 +60,7 @@ deferred without making the rest untestable.
 
 | Day | Planned | Built | Notes |
 | --- | --- | --- | --- |
-| 1 | HTML profile page reading JSON from `/profile-data/` with visibility flags | `profile/` + `assets/profile.js` + `lib/store.js` + `lib/access.js` | All four visitor scenarios, tier banner, 404 and fetch-error states, monogram fallback |
+| 1 | HTML profile page reading JSON from `/profile-data/` with visibility flags | `profile/` + `profile/profile.js` + `lib/store.js` + `lib/access.js` | Public view, token unlock and expiry fallback, one shareable link with a copy button, 404 and fetch-error states, monogram fallback |
 | 2 | Card builder with 2 CSS templates + `html2canvas` PNG download | `card-builder/` with **3** templates; PNG **and** vector PDF **and** SVG | `html2canvas` replaced — see [the deviation](#the-one-big-deviation) |
 | 3 | `qrcode.js` QR on the card back | `lib/qr.js` — a from-scratch encoder | No CDN dependency; verified against the reference package and against jsQR |
 | 4 | Temporary-link demo via `?t=` + a JSON token file + timestamp expiry | `lib/access.js` tokens + the dashboard's mint/revoke UI + `examples/tokens.json` | Includes use-count limits and the "expired" downgrade path |
@@ -126,9 +126,11 @@ The profile JSON is fetched by the visitor's browser and contains every link, in
 decides what to *render*. A visitor who opens devtools can read what was not rendered.
 
 That is acceptable for a price list or a portfolio draft. It is not acceptable for anything that
-would hurt you if it were public, and the UI says so out loud — the profile page's scenario
-switcher carries the line *"this is a demo, not real access control"*, linking to
+would hurt you if it were public, and the UI says so out loud — the examples gallery opens with
+*"these are demonstrations, not enforcement"*, linking to
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#8-the-v1-trust-model--read-this-before-trusting-a-private-link).
+A real card page says nothing about how its links were chosen, because a visitor has one thing to
+do there: copy the link or tap one.
 
 Three smaller gaps, all deliberate:
 
@@ -171,7 +173,7 @@ Small, self-contained, no server. Roughly in priority order:
    what is wrong.
 7. ~~**`/c/username` shipped as generated files.**~~ **Done** — `tools/build-links.js` writes
    `c/<username>/index.html` from `profile-data/*.json`, plus the manifests a static site needs
-   because it cannot list a directory. It runs in `.github/workflows/pages.yml` on every push, so
+   because it cannot list a directory. It runs in `.github/workflows/pages-deploy.yml` on every push, so
    nobody maintains one file per person by hand. See
    [the fork-to-deploy pivot](#v16--the-fork-to-deploy-pivot).
 
@@ -350,7 +352,7 @@ The rule, restated because everything else follows from it:
 | Unlimited profiles, self-hosted | Hosted profiles with a custom domain |
 | 5 public links per profile (hosted) | More public links |
 | 1 active temporary link (hosted) | More concurrent tokens, longer durations |
-| All three templates | Additional template packs, a template editor |
+| Every built-in theme (six today) | Additional template packs, a template editor |
 | Full print output: PDF, SVG, PNG, sheets | Print fulfilment — cards in the post |
 | The entire source, MIT | Analytics, priority support |
 | Follower approvals | Team accounts, multiple owners |

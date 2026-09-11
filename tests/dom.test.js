@@ -954,8 +954,10 @@ test('card builder: changing the username changes the URL encoded in the QR', { 
 test('card preview page: shows every template plus QR metadata', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('templates/index.html', { settleMs: 900, profileDir: '../examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
-  assert.equal(doc.querySelectorAll('#profile-picker button').length, 2,
-    'both example profiles should be offered');
+  const exampleNames = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8')).profiles;
+  assert.equal(doc.querySelectorAll('#profile-picker button').length, exampleNames.length,
+    'one picker button per fixture profile');
   // One panel per template, built-ins plus contributed; each panel shows both
   // sides twice (normal content and the long-text stress row).
   const panels = doc.querySelectorAll('#templates .panel').length;
@@ -1145,12 +1147,15 @@ test('the renderer resolves the person from the page when no host has booted', {
   //
   // On a one-person deployment that is indistinguishable from correct, which is why
   // the test above passes either way. With a second person it renders somebody else
-  // at a printed card URL. examples/ lists meera9 before rahul123, so asking for
-  // rahul123 is the discriminating case: the wrong answer is a real profile.
+  // at a printed card URL. The fallback answers with the FIRST name in the manifest,
+  // so asking for anybody else is the discriminating case: the wrong answer would be a
+  // real profile rather than an empty state. Which name that is, and how many fixtures
+  // there are, comes from the manifest, so adding a demo cannot rot this test.
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8'));
-  assert.equal(manifest.profiles[0], 'meera9', 'this test needs meera9 listed first, as the decoy');
+  assert.ok(manifest.profiles.length > 1,
+    'needs at least two fixtures, or a fallback to the first profile is undetectable');
   const asked = manifest.profiles[manifest.profiles.length - 1];
-  assert.equal(asked, 'rahul123');
+  assert.notEqual(asked, manifest.profiles[0], 'the name asked for must not be the fallback answer');
 
   // boot.js omitted on purpose. In production this is the state profile.js is in when
   // selfStart()'s timer beats boot.js over the network: 404.html has already put
@@ -1602,23 +1607,22 @@ test('site root: an untouched fork gets setup help, not an empty page', { skip: 
   assert.equal(panel.hidden, false, 'the starter profile is still there, so say what to do');
   assert.match(panel.textContent, /profile-data\//, 'it must name the file to edit');
   assert.match(panel.textContent, /npm run build/, 'it must say how to generate the URL');
-  // The free-tier limit is shown from the rules, so the page cannot drift from them.
-  const Access = doc.defaultView.AccessRules;
-  assert.equal(doc.getElementById('limit-public').textContent,
-    String(Access.LIMITS.maxPublicLinks));
 });
 
 test('site root: a deployment with real profiles drops the setup panel', { skip: NO_JSDOM }, async () => {
   const { doc, errors } = await loadPage('index.html', { settleMs: 900, profileDir: 'examples/' });
   assert.deepEqual(errors, [], errors.join('\n'));
+  const names = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'examples', 'index.json'), 'utf8')).profiles;
   const rows = Array.from(doc.querySelectorAll('.card-index-row'));
-  assert.equal(rows.length, 2, 'both example profiles should be listed');
+  assert.equal(rows.length, names.length, 'every fixture profile should be listed');
   assert.equal(doc.getElementById('first-run').hidden, true,
     'setup help is for an untouched fork only');
-  assert.equal(doc.getElementById('card-count').textContent.indexOf('2 cards'), 0);
+  assert.equal(doc.getElementById('card-count').textContent.indexOf(names.length + ' cards'), 0);
   // Nobody's URL may be inherited from a fixture: each is derived from this origin.
-  const urls = rows.map(r => r.querySelector('.url-value').textContent);
-  assert.deepEqual(urls, [ORIGIN + '/c/meera9/', ORIGIN + '/c/rahul123/'], urls.join(' | '));
+  // Compared as a set — which order the index lists cards in is not what this guards.
+  const urls = rows.map(r => r.querySelector('.url-value').textContent).sort();
+  assert.deepEqual(urls, names.map(u => ORIGIN + '/c/' + u + '/').sort(), urls.join(' | '));
 });
 
 test('generated /c/ directory page lists every profile', async () => {

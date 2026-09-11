@@ -15,6 +15,16 @@
   var Exporter = window.Exporter;
 
   /**
+   * Is this the demo? The examples gallery links here as "Design a card for this
+   * person", with ?demo=1 and a fixture username. That makes the page an
+   * evaluation view, and an evaluation view must not lead to the dashboard —
+   * the dashboard is the owner's console. In demo mode everything marked
+   * data-owner-tool in the markup is stripped, and Save writes to this browser
+   * (the demo pages read it back) instead of navigating away.
+   */
+  var DEMO = !!(Store && Store.isDemoRequest && Store.isDemoRequest());
+
+  /**
    * The blank card a new fork starts from.
    *
    * Deliberately the same identity as profile-data/yourname.json, so "open the
@@ -261,6 +271,13 @@
       }).join('') + '</ul>');
       return;
     }
+    // The demo saves into this browser — the demo pages read it back — but must
+    // not open the dashboard. It is the owner's console, not part of the
+    // evaluation, so the demo visitor stays right here.
+    if (DEMO) {
+      alert('ok', 'Saved to this browser. The demo pages now show this card; nothing was uploaded.');
+      return;
+    }
     location.href = '../dashboard/?u=' + encodeURIComponent(result.profile.username);
   }
 
@@ -293,7 +310,10 @@
     readForm();
     if (!draft.username) { alert('danger', 'A username is required first.'); return; }
     Store.saveProfile(draft);
-    window.open('../print/?u=' + encodeURIComponent(draft.username) + '&ecl=' + ecl, '_blank');
+    // Carry the demo flag: the sheet this opens must also stay a demo page —
+    // reading the fixtures and hiding the dashboard — rather than an owner page.
+    window.open('../print/?' + (DEMO ? 'demo=1&' : '') + 'u=' +
+      encodeURIComponent(draft.username) + '&ecl=' + ecl, '_blank');
   }
 
   // ---------------------------------------------------------------------------
@@ -358,10 +378,32 @@
     $('b-json').addEventListener('click', downloadJson);
   }
 
+  /**
+   * Turn the page into its demo form: no dashboard anywhere. The markup marks
+   * the owner-only pieces with data-owner-tool; here they are removed (not
+   * hidden) so nothing can re-show them, and the copy that promises the
+   * dashboard is replaced with what the demo actually does.
+   */
+  function applyDemoMode() {
+    if (!DEMO) return;
+    Array.prototype.forEach.call(
+      document.querySelectorAll('[data-owner-tool]'),
+      function (node) { node.remove(); });
+    var save = $('b-save');
+    if (save) save.textContent = 'Save to this browser';
+    var copy = $('b-next-copy');
+    if (copy) {
+      copy.textContent = 'Nothing is uploaded — your changes stay in this browser, ' +
+        'and the demo pages show them straight away. Download the profile JSON ' +
+        'to take the card with you.';
+    }
+  }
+
   function start() {
     // Start from the last profile edited in this browser, if there is one.
     var last = Store.getLastUsername();
     var wanted = new URLSearchParams(location.search).get('u') || last;
+    applyDemoMode();
     wire();
     // Contributed templates live in their own folder and are listed in a manifest,
     // because a static site cannot enumerate a directory. Load them first so the

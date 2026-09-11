@@ -45,7 +45,10 @@
   <nav>
     <a href="../index.html">Cards</a>
     <a href="../card-builder/">Builder</a>
-    <a href="../dashboard/">Dashboard</a>
+    <!-- data-owner-tool: stripped when this sheet runs as a demo (?demo=1, the
+         links the examples gallery and the templates page build). A demo is an
+         evaluation view and the dashboard is the owner's console. -->
+    <a href="../dashboard/" data-owner-tool>Dashboard</a>
     <a href="../templates/">Templates</a>
     <a href="./" aria-current="page">Print</a>
     <a href="../qr-generator/">QR tool</a>
@@ -63,7 +66,7 @@
     <div class="btn-row">
       <button type="button" class="btn" id="btn-print">Print…</button>
       <button type="button" class="btn btn-ghost" id="btn-bleed">Toggle 3 mm bleed</button>
-      <a class="btn btn-ghost" id="btn-pdf" href="../dashboard/">Download the PDF instead</a>
+      <a class="btn btn-ghost" id="btn-pdf" data-owner-tool href="../dashboard/">Download the PDF instead</a>
     </div>
     <p class="tiny muted mt1" id="sheet-note"></p>
   </div>

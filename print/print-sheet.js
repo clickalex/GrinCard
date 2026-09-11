@@ -17,6 +17,21 @@
   var bleed = false;
   var card = null;
 
+  /**
+   * Is this sheet part of the demo? The examples gallery ("Print sheet") and the
+   * demo card builder link here with ?demo=1. A demo is an evaluation view, and
+   * the dashboard — where the vector PDF download lives — is the owner's
+   * console, so its affordances are stripped, not hidden.
+   */
+  var DEMO = !!(Store && Store.isDemoRequest && Store.isDemoRequest());
+
+  /** Remove every element marked data-owner-tool — the dashboard's doorways. */
+  function stripOwnerTools() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll('[data-owner-tool]'),
+      function (node) { node.remove(); });
+  }
+
   function el(tag, attrs, children) {
     var node = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (key) {
@@ -85,6 +100,7 @@
   }
 
   function boot() {
+    if (DEMO) stripOwnerTools();
     var params = new URLSearchParams(location.search);
     var ecl = params.get('ecl') || 'Q';
     var resolvedUsername = '';   // read by the button handlers below, which are
@@ -134,7 +150,10 @@
       this.textContent = bleed ? 'Remove 3 mm bleed' : 'Toggle 3 mm bleed';
       render();
     });
-    document.getElementById('btn-pdf').addEventListener('click', function (e) {
+    // Absent in demo mode: stripOwnerTools() already removed it, and wiring a
+    // removed node would throw.
+    var pdf = document.getElementById('btn-pdf');
+    if (pdf) pdf.addEventListener('click', function (e) {
       e.preventDefault();
       if (!resolvedUsername) { location.href = '../dashboard/'; return; }
       location.href = '../dashboard/?u=' + encodeURIComponent(resolvedUsername);
